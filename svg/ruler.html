@@ -1,0 +1,82 @@
+<!doctype html>
+<html>
+	<head>
+		<title>svg arc</title>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+		<style>
+
+        </style>
+    </head>
+    <script type="text/script" src="../lib/js/jquery-1.10.2.js"></script>
+	<body>
+        <div>
+<svg version="1.1" id="mqruler"
+    width="100px" height="100px"
+    viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <g id="ruler-g" class="" fill="transparent">
+        <path stroke-width="0.1" stroke="blue"
+            d="
+            M0 0 
+            A100 100 0 0 1 100 100 
+            L0 100 
+            L0 0
+            z
+            "/>
+    </g>
+</svg>
+</div>
+		<script>
+            //width="100px" height="100px"
+            var svg = document.getElementById("mqruler");
+            var g = document.getElementById("ruler-g");
+            for (var i = 0; i < 101; i+=2) {
+                if (i == 0) continue;
+                var line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                line.setAttribute("x1", i);
+                line.setAttribute("y1", 100);
+                line.setAttribute("x2", i);
+                if (i % 10 == 0) {
+                    line.setAttribute("y2", 95);
+                } else {
+                    line.setAttribute("y2", 98);
+                }
+                line.style.strokeWidth= 0.1;
+                line.style.stroke='rgb(148,61,61)';
+                g.appendChild(line);
+            }
+            for (var i = 0; i < 100; i+=2) {
+                var line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                line.setAttribute("x1", 0);
+                line.setAttribute("y1", i);
+                if (i % 10 == 0) {
+                    line.setAttribute("x2", 5);
+                } else {
+                    line.setAttribute("x2", 2);
+                }
+                line.setAttribute("y2", i);
+                line.style.strokeWidth= 0.1;
+                line.style.stroke='rgb(148,61,61)';
+                g.appendChild(line);
+            }
+            for (var i = 1; i < 90; i+=2) {
+                var line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                var rad = ( 2 * Math.PI/ 360) * i;
+                var x = Math.sin(rad) * 100;
+                var y = 100 - Math.cos(rad) * 100;
+                line.setAttribute("x1", x);
+                line.setAttribute("y1", y);
+                if (i % 5 == 0) {
+                    line.setAttribute("x2", x-5);
+                } else {
+                    line.setAttribute("x2", x-2);
+                }
+                line.setAttribute("y2", y);
+                line.setAttribute("transform", "rotate("+ (-90 + i) + " " + x + " " + y +")");
+                line.style.strokeWidth=0.1;
+                line.style.stroke='rgb(148,61,61)';
+                g.appendChild(line);
+            }
+		</script>
+	</body>
+</html>

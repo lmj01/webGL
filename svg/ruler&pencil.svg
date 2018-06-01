@@ -1,0 +1,34 @@
+<svg version="1.1" id="pencil-ruler" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="-125 -125 500 500" enable-background="new 0 0 250 250" xml:space="preserve">
+    <g class="pencil">
+        <rect x="24.5" y="90.4" transform="matrix(0.7071 0.7071 -0.7071 0.7071 119.9114 -49.7855)" fill="#7F2A43" width="191.2" height="58.8" />
+        <rect x="14.1" y="115.5" transform="matrix(0.7071 0.7071 -0.7071 0.7071 124.2189 -39.3857)" fill="#541D2D" width="191.2" height="29.4" />
+        <polygon fill="#FFFFFF" points="21.3,41.9 31.7,73.1 52.5,73.1 52.5,52.3 73.3,52.3 73.3,31.5 42.1,21.1 	" />
+        <rect x="163.4" y="185.3" transform="matrix(0.7071 -0.7071 0.7071 0.7071 -79.7399 192.7906)" fill="#FFFFFF" width="58.8" height="14.7" />
+        <path fill="#A6C8B8" d="M244.3,214l-30.2,30.2c-3.2,3.2-8.3,3.2-11.4,0l-25.5-25.5l41.6-41.6l25.5,25.5
+			C247.5,205.7,247.5,210.8,244.3,214z" />
+        <polygon fill="#BFBFBF" points="10.9,10.7 21.3,41.9 42.1,21.1 	" />
+        <rect x="175.1" y="188.3" transform="matrix(-0.7071 -0.7071 0.7071 -0.7071 167.8807 475.638)" fill="#EFEFEF" width="14.7" height="29.4" />
+        <path fill="#7A9E8D" d="M198,197.8l-20.8,20.8l25.5,25.5c3.2,3.2,8.3,3.2,11.4,0l15.1-15.1L198,197.8z" />
+        <polygon fill="#EFEFEF" points="21.3,41.9 31.7,73.1 52.5,73.1 52.5,52.3 31.7,31.5 	" />
+        <polygon fill="#989797" points="31.7,31.5 10.9,10.7 21.3,41.9 	" />
+        <rect class="pencil-shadow" x="122.9" y="143.3" transform="matrix(0.7071 -0.7071 0.7071 0.7071 -62.9402 152.2322)" fill="#541D2D" width="58.8" height="17.6" />
+    </g>
+    <g class="ruler">
+        <rect x="-21.8" y="95.6" transform="matrix(0.7071 -0.7071 0.7071 0.7071 -51.7405 125.1936)" fill="#E76245" width="294.1" height="58.8" />
+        <rect x="20.6" y="191.3" transform="matrix(0.7071 0.7071 -0.7071 0.7071 147.671 31.9288)" fill="#FFFFFF" width="29.4" height="5.9" />
+        <rect x="60.4" y="151.5" transform="matrix(0.7071 0.7071 -0.7071 0.7071 131.1883 -7.8532)" fill="#FFFFFF" width="29.4" height="5.9" />
+        <rect x="100.1" y="111.7" transform="matrix(0.7071 0.7071 -0.7071 0.7071 114.7116 -47.6315)" fill="#FFFFFF" width="29.4" height="5.9" />
+        <rect x="139.9" y="71.9" transform="matrix(0.7071 0.7071 -0.7071 0.7071 98.2349 -87.4098)" fill="#FFFFFF" width="29.4" height="5.9" />
+        <rect x="179.7" y="32.2" transform="matrix(0.7071 0.7071 -0.7071 0.7071 81.7529 -127.1844)" fill="#FFFFFF" width="29.4" height="5.9" />
+        <rect x="36" y="172.8" transform="matrix(0.7071 0.7071 -0.7071 0.7071 136.9728 20.8195)" fill="#F3B1A2" width="14.7" height="5.9" />
+        <rect x="9.5" y="199.3" transform="matrix(0.7071 0.7071 -0.7071 0.7071 147.9573 47.3384)" fill="#F3B1A2" width="14.7" height="5.9" />
+        <rect x="155.3" y="53.5" transform="matrix(0.7071 0.7071 -0.7071 0.7071 87.5427 -98.5154)" fill="#F3B1A2" width="14.7" height="5.9" />
+        <rect x="75.8" y="133" transform="matrix(0.7071 0.7071 -0.7071 0.7071 120.4961 -18.9588)" fill="#F3B1A2" width="14.7" height="5.9" />
+        <rect x="115.6" y="93.3" transform="matrix(0.7071 0.7071 -0.7071 0.7071 104.0194 -58.7371)" fill="#F3B1A2" width="14.7" height="5.9" />
+        <rect x="49.3" y="159.6" transform="matrix(0.7071 0.7071 -0.7071 0.7071 131.4806 7.5601)" fill="#F3B1A2" width="14.7" height="5.9" />
+        <rect x="168.6" y="40.2" transform="matrix(0.7071 0.7071 -0.7071 0.7071 82.0505 -111.7748)" fill="#F3B1A2" width="14.7" height="5.9" />
+        <rect x="195.1" y="13.7" transform="matrix(0.7071 0.7071 -0.7071 0.7071 71.066 -138.2937)" fill="#F3B1A2" width="14.7" height="5.9" />
+        <rect x="89" y="119.8" transform="matrix(0.7071 0.7071 -0.7071 0.7071 115.0039 -32.2182)" fill="#F3B1A2" width="14.7" height="5.9" />
+        <rect x="128.8" y="80" transform="matrix(0.7071 0.7071 -0.7071 0.7071 98.5272 -71.9965)" fill="#F3B1A2" width="14.7" height="5.9" />
+    </g>
+</svg>
