@@ -1,0 +1,40 @@
+<!doctype html>
+<html>
+	<head>
+		<title>demo svg canvas</title>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+		<style>
+			canvas {
+				background: #F09090;
+			}
+        </style>		
+    </head>
+	<body>
+			<canvas id="demo1"></canvas>
+		<script>
+			function drawDemo1() {
+				var canvas = document.getElementById('demo1');
+				//canvas.width = 800;
+				//canvas.height = 800;
+				var g = canvas.getContext('2d');					
+				var img = new Image;
+				img.onload = function() {
+					var width = img.width;
+					var height = img.height;					
+					var x = 2;
+					var y = 2;
+					g.drawImage(img, x, y, width, height);
+					for (var i = 0; i < 7; i++) {
+						g.drawImage(img, x, y, width, height);
+						x += width + 2;
+						width /= 2;
+						height /= 2;
+					}
+				}				
+				img.src = 'ruler3.svg';
+			}
+			drawDemo1();
+		</script>
+	</body>
+</html>

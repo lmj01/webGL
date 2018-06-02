@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Document</title>
+    <style type="text/css">
+    .box > canvas {
+        position: absolute;
+    }
+	#layer1 {
+		background: transparent;
+		border: 1px solid #00F;
+		
+		transform-origin: 50% 50%;
+		-ms-transform-origin: 50% 50%;
+		-webkit-transform-origin: 50% 50%;
+		-o-transform-origin: 50% 50%;
+		-moz-transform-origin: 50% 50%;
+	}
+	#layer2 {
+		background: #009900;
+	}
+    </style>
+	<script src="/webGL/lib/js/jquery-1.10.2.js"></script>
+</head>
+<body>
+	<div>
+		<button type="button" id="id_left" onclick="click_left();">L</button>
+		<button type="button" id="id_right"  onclick="click_right();">R</button>
+		<button type="button" id="id_up"  onclick="click_up();">Up</button>
+		<button type="button" id="id_down"  onclick="click_down();">Down</button>
+		<button type="button" id="id_cw"  onclick="click_cw();">CW</button>
+		<button type="button" id="id_ccw" onclick="click_ccw();">CCW</button>
+		<button type="button" id="id_rotate" onclick="click_rotate();">旋转</button>
+	</div>
+	<br />
+    <div class="box">
+        <canvas id="layer2" width="500" height="500"></canvas>
+		
+        <canvas id="layer1" width="200" height="200"></canvas>
+    </div>
+    <script type="text/javascript">
+    function getRect(obj) {
+        var x1 = obj.offsetLeft;
+        var y1 = obj.offsetTop;
+        var x2 = x1+obj.offsetWidth;
+        var y2 = y1+obj.offsetHeight;
+        return {
+            x1: x1,
+            y1: y1,
+            x2: x2,
+            y2: y2
+        };
+    }
+    function inside(x, y, rect) {
+        if(x>rect.x1 && x<rect.x2 && y>rect.y1 && y<rect.y2) {
+            return true;
+        }
+        else {
+            return false;
+        }
+    }
+    var trigger = {};
+    trigger.list = [];
+    trigger.listen = function() {
+        var list = trigger.list;
+        document.addEventListener('click',function(evt) {
+            for(var i=0; i<list.length; ++i) {
+                list[i](evt);
+            }
+        });
+    };
+    trigger.listen();
+    var l1 = document.getElementById('layer1');	
+	var ctx = l1.getContext('2d');
+    var l2 = document.getElementById('layer2');
+    var dl1 = function(evt) {
+        if(inside(evt.clientX, evt.clientY, getRect(l1))) {
+            console.log('click');
+        }
+    }
+    trigger.list.push(dl1);
+    var dl2 = function(evt) {
+        if(inside(evt.clientX, evt.clientY, getRect(l2))) {
+            console.log('click2');
+        }
+    }
+    trigger.list.push(dl2);
+	var img = new Image;
+	img.onload = function() {
+		ctx.drawImage(img, 0, 0);
+	}
+	img.src = 'ruler3.svg';
+	var posx = 0;
+	var posy = 0;
+	var degree = 0;
+	var m11=0,m12=0,m13=0;
+	var m21=0,m22=0,m23=0;
+	updateRotate(degree);
+	function click_left() {
+		m13--;
+		updateTransform();
+	}
+	function click_right() {
+		//posx++;
+		m13++;
+		updateTransform();
+	}
+	function click_up() {
+		//posy--;
+		m23--;
+		updateTransform();
+	}
+	function click_down() {
+		//posy++;
+		m23++;
+		updateTransform();
+	}
+	function click_cw() {
+		degree--;
+		updateRotate(degree);
+		updateTransform();
+	}
+	function click_ccw() {
+		degree++;
+		updateRotate(degree);
+		updateTransform();
+	}
+	function deg2rad(degree){
+		return degree * Math.PI / 180;
+	}
+	function updateRotate(degree) {
+		var rad = deg2rad(degree);
+		m11 = Math.cos(rad);
+		m12 = -Math.sin(rad);
+		m21 = Math.sin(rad);
+		m22 = Math.cos(rad);	
+	}
+	function updateTransform(){
+		transform('matrix('+m11+','+m21+','+m12+','+m22+','+m13+','+m23+')');
+	}
+	function transform(val) {		
+		$('#layer1').css('transform', val);
+		$('#layer1').css('-ms-transform', val);
+		$('#layer1').css('-webkit-transform', val);
+		$('#layer1').css('-o-transform', val);
+		$('#layer1').css('-moz-transform', val);
+	}
+    </script>
+</body>
+</html>
