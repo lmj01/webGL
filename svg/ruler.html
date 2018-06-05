@@ -12,8 +12,9 @@
         <div>
 <svg version="1.1" id="mqruler"
     width="100px" height="100px"
-    viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-    <g id="ruler-g" class="" fill="transparent">
+    
+    xmlns="http://www.w3.org/2000/svg">
+    <g id="ruler-g" class="" fill="white" fill-opacity="0.4">
         <path stroke-width="0.1" stroke="blue"
             d="
             M0 0 
@@ -27,24 +28,30 @@
 </div>
 		<script>
             //width="100px" height="100px"
+            //viewBox="0 0 100 100" 
             var svg = document.getElementById("mqruler");
             var g = document.getElementById("ruler-g");
-            for (var i = 0; i < 101; i+=2) {
+            var xrange = 1000;
+            var yrange = 1000;
+            var def_stroke = 'rgb(255, 0, 0)';
+            // 水平的
+            for (var i = 0; i < xrange+1; i+=2) {
                 if (i == 0) continue;
                 var line = document.createElementNS("http://www.w3.org/2000/svg", "line");
                 line.setAttribute("x1", i);
-                line.setAttribute("y1", 100);
+                line.setAttribute("y1", xrange);
                 line.setAttribute("x2", i);
                 if (i % 10 == 0) {
-                    line.setAttribute("y2", 95);
+                    line.setAttribute("y2", xrange - 5);
                 } else {
-                    line.setAttribute("y2", 98);
+                    line.setAttribute("y2", xrange - 2);
                 }
                 line.style.strokeWidth= 0.1;
-                line.style.stroke='rgb(148,61,61)';
+                line.style.stroke=def_stroke;
                 g.appendChild(line);
             }
-            for (var i = 0; i < 100; i+=2) {
+            // 垂直的
+            for (var i = 0; i < yrange; i+=2) {
                 var line = document.createElementNS("http://www.w3.org/2000/svg", "line");
                 line.setAttribute("x1", 0);
                 line.setAttribute("y1", i);
@@ -55,14 +62,15 @@
                 }
                 line.setAttribute("y2", i);
                 line.style.strokeWidth= 0.1;
-                line.style.stroke='rgb(148,61,61)';
+                line.style.stroke=def_stroke;
                 g.appendChild(line);
             }
+            // 弧线
             for (var i = 1; i < 90; i+=2) {
                 var line = document.createElementNS("http://www.w3.org/2000/svg", "line");
                 var rad = ( 2 * Math.PI/ 360) * i;
-                var x = Math.sin(rad) * 100;
-                var y = 100 - Math.cos(rad) * 100;
+                var x = (Math.sin(rad) * 100).toFixed(4);
+                var y = (100 - Math.cos(rad) * 100).toFixed(4);
                 line.setAttribute("x1", x);
                 line.setAttribute("y1", y);
                 if (i % 5 == 0) {
@@ -73,7 +81,7 @@
                 line.setAttribute("y2", y);
                 line.setAttribute("transform", "rotate("+ (-90 + i) + " " + x + " " + y +")");
                 line.style.strokeWidth=0.1;
-                line.style.stroke='rgb(148,61,61)';
+                line.style.stroke=def_stroke;
                 g.appendChild(line);
             }
 		</script>
