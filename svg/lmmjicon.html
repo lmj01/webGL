@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <title></title>
+    <style>
+       
+html {
+  font-size: 100%
+}
+
+body,
+html {
+  min-height: 100%;
+  min-height: 100vh
+}
+
+body {
+  font-family: Helvetica, sans-serif;
+  color: #fff;
+  margin: 0;
+  background-color: #111
+}
+
+.body-wrapper {
+  position: relative;
+  min-height: 100vh;
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -ms-flex-flow: row wrap;
+      flex-flow: row wrap;
+  -webkit-box-pack: center;
+      -ms-flex-pack: center;
+          justify-content: center;
+  -webkit-box-align: center;
+      -ms-flex-align: center;
+          align-items: center;
+  background-blend-mode: multiply;
+  -webkit-animation: page-fade-in 2s;
+          animation: page-fade-in 2s
+}
+
+@-webkit-keyframes page-fade-in {
+  0% {
+    opacity: 0
+  }
+  to {
+    opacity: 1
+  }
+}
+
+@keyframes page-fade-in {
+  0% {
+    opacity: 0
+  }
+  to {
+    opacity: 1
+  }
+}
+
+/* fallback */
+@font-face {
+  font-family: 'Material Icons';
+  font-style: normal;
+  font-weight: 400;
+  src: url(https://fonts.gstatic.com/s/materialicons/v38/flUhRq6tzZclQEJ-Vdg-IuiaDsNc.woff2) format('woff2');
+}
+
+.material-icons {
+  font-family: 'Material Icons';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+}
+
+    </style>
+</head>
+<body>
+      <div>
+        <button aria-label="rotate right 2"><i class="material-icons" aria-hidden="true">rotate_right</i></button>
+        <button aria-label="rotate right"><i class="material-icons" aria-hidden="true">arrow_forward</i></button>
+        <button aria-label="menu"><i class="material-icons" aria-hidden="true">menu</i></button>
+      </div>
+</body>
+</html>
