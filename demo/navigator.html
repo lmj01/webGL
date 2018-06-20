@@ -1,0 +1,105 @@
+<!doctype html>
+<html>
+	<head>
+		<title>svg arc</title>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+		<style>
+			body {
+	background-color : #333;
+}
+
+		</style>
+	</head>
+
+	<body>
+	<div >
+		<div id="panzoom" style="position: absolute; width: 155px; height: 100px; right: 10px; border-radius: 5px; top: 379px; display: inline; background-color: rgb(255, 255, 255);">
+			<div id="nippleZoomDiv" style="position: absolute; width: 70px; height: 100px; left: 0px; background-image: url(nippleZoom.png); background-size: 80%; background-repeat: no-repeat; background-position: 7px 22px; touch-action: none;">
+				<div class="nipple collection_0" id="nipple_0_0" style="position: absolute; opacity: 0.5; display: block; z-index: 999; transition: opacity 250ms; top: 50px; left: 35px;">
+					<div class="back" style="position: absolute; display: block; width: 60px; height: 60px; margin-left: -30px; margin-top: -30px; background: black; opacity: 0.5; border-radius: 50%;"></div>
+					<div class="front" style="width: 40px; height: 40px; position: absolute; display: block; margin-left: -20px; margin-top: -20px; background: black; opacity: 0.5; border-radius: 50%; transition: none; left: 0px; top: 0px;"></div>
+				</div>
+			</div>
+			<div id="nipplePanDiv" style="position: absolute; width: 90px; height: 100px; left: 70px; background-image: url(nipplePan.png); background-size: 60%; background-repeat: no-repeat; background-position: 14px 23px; touch-action: none;">
+				<div class="nipple collection_1" id="nipple_1_1" style="position: absolute; opacity: 0.5; display: block; z-index: 999; transition: opacity 250ms; top: 50px; left: 40px;">
+					<div class="back" style="position: absolute; display: block; width: 80px; height: 80px; margin-left: -40px; margin-top: -40px; background: black; opacity: 0.5; border-radius: 50%;"></div>
+					<div class="front" style="width: 53.3333px; height: 53.3333px; position: absolute; display: block; margin-left: -26.6667px; margin-top: -26.6667px; background: black; opacity: 0.5; border-radius: 50%;"></div>
+				</div>
+			</div>
+		</div>
+	</div>
+	<script type="text/javascript" src="nipplejs.js"></script>
+	<script>
+	    var panzoom = document.getElementById("panzoom");
+		var nipplePan = document.getElementById("nipplePanDiv");
+		var nippleZoom = document.getElementById("nippleZoomDiv");
+		function bindNipple() {
+			panzoom.style.backgroundColor = "rgba(255, 255, 255, 1)",
+			nipplePan.style.backgroundImage = "url(nipplePan.png)",
+			nipplePan.style.backgroundSize = "60%",
+			nipplePan.style.backgroundRepeat = "no-repeat",
+			nipplePan.style.backgroundPosition = "14px 23px",
+			nippleZoom.style.backgroundImage = "url(nippleZoom.png)",
+			nippleZoom.style.backgroundSize = "80%",
+			nippleZoom.style.backgroundRepeat = "no-repeat",
+			nippleZoom.style.backgroundPosition = "7px 22px",
+			NavZoomManager = nipplejs.create({
+				zone: nippleZoom,
+				color: "black",
+				size: 60,
+				multitouch: !1,
+				maxNumberOfNipples: 1,
+				position: {
+					top: "50px",
+					left: "35px"
+				},
+				mode: "static",
+				restOpacity: .5,
+				catchDistance: 100
+			}),
+			NavPanManager = nipplejs.create({
+				zone: nipplePan,
+				color: "black",
+				size: 80,
+				multitouch: !1,
+				maxNumberOfNipples: 1,
+				position: {
+					top: "50px",
+					left: "40px"
+				},
+				mode: "static",
+				restOpacity: .5,
+				catchDistance: 100
+			}),
+			NavPanManager.on("start", function(e, t) {
+				doPan = !0
+			}).on("end", function(e, t) {
+				doPan = !1
+			}).on("move", function(e, t) {
+				forcePan = t.force
+			}).on("dir:up", function(e, t) {
+				directionPan = "up"
+			}).on("dir:left", function(e, t) {
+				directionPan = "left"
+			}).on("dir:down", function(e, t) {
+				directionPan = "down"
+			}).on("dir:right", function(e, t) {
+				directionPan = "right"
+			}),
+			NavZoomManager.on("start", function(e, t) {
+				doZoom = !0
+			}).on("end", function(e, t) {
+				doZoom = !1
+			}).on("move", function(e, t) {
+				forceZoom = t.force
+			}).on("plain:up", function(e, t) {
+				directionZoom = "up"
+			}).on("plain:down", function(e, t) {
+				directionZoom = "down"
+			}),
+		}
+		bindNipple();
+	</script>
+	</body>
+</html>
