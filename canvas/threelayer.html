@@ -1,0 +1,48 @@
+<!doctype html>
+<html>
+	<head>
+		<title>two layer canvas</title>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+		<style>
+
+            #stage {
+                width: 480px;
+                height: 320px;
+                position: relative;
+                border: 2px solid black
+            }
+            canvas { position: absolute; }
+            #ui-layer { z-index: 3 }
+            #game-layer { z-index: 2 }
+            #background-layer { z-index: 1 }
+        
+        </style>
+        <script type="text/script" src="./jquery-1.10.2.js"></script>
+    </head>
+	<body>
+        <div id="stage">
+            <canvas id="ui-layer" width="480" height="320"></canvas>
+            <canvas id="game-layer" width="480" height="320"></canvas>
+            <canvas id="background-layer" width="480" height="320"></canvas>
+        </div>
+		<script>
+            let canvasUI = document.getElementById('ui-layer');
+            let canvasGame = document.getElementById('game-layer');
+            let canvasBK = document.getElementById('background-layer');
+            
+            var ctxUI = canvasUI.getContext('2d');
+            var ctxGame = canvasGame.getContext('2d');
+            var ctxBK = canvasBK.getContext('2d');
+
+            // background 
+            var img = new Image();
+            img.onload = function(e) {
+                ctxBK.drawImage(img, 0, 0);
+            }
+            img.src = './z-1048.jpg';
+            
+
+		</script>
+	</body>
+</html>

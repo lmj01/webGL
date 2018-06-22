@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<script id="vs" type="x-shader/x-vertex">#version 300 es
+in vec4 position;
+out vec2 vCoord;
+void main()
+{
+    vCoord = position.xy * 0.5 + 0.5;
+    gl_Position = position;
+}
+</script>
+<script id="fs" type="x-shader/x-fragment">#version 300 es
+precision mediump float;
+
+in vec2 vCoord;
+uniform sampler2D map;
+out vec4 fragColor;
+void main() 
+{
+    vec4 color = texture(map, vCoord);
+    fragColor = color;
+}
+</script>
+</head>
+<body>
+    <img id="id_img" width="100" height="100" src="./photo.jpg" alt="">
+    <canvas id="id_canvas" width="500" height="500" ></canvas>
+
+    <script>
+        //let canvas = document.createElement( 'canvas' )
+        let canvas = document.getElementById('id_canvas');
+        let gl = canvas.getContext( 'webgl2' )
+        if( gl == null ) { alert( 'requires webgl2 support!' ) }
+    
+        let vs_source = document.getElementById('vs').textContent;
+        //console.log(vs_source);
+        let fs_source = document.getElementById('fs').textContent;
+        //console.log(fs_source);
+        let vs_shader = gl.createShader(gl.VERTEX_SHADER);
+        gl.shaderSource(vs_shader, vs_source);
+        gl.compileShader(vs_shader);
+        let err_shader = gl.getShaderInfoLog(vs_shader);
+        console.log(err_shader);
+        let fs_shader = gl.createShader(gl.FRAGMENT_SHADER);
+        gl.shaderSource(fs_shader, fs_source);
+        gl.compileShader(fs_shader);
+        err_shader = gl.getShaderInfoLog(fs_shader);
+        console.log(err_shader);
+
+        var program = gl.createProgram();
+        gl.attachShader(program, vs_shader);
+        gl.attachShader(program, fs_shader);
+        gl.linkProgram(program);
+        
+        gl.useProgram(program);
+        
+        let uMap = gl.getUniformLocation(program, 'map');
+    
+        let texture = gl.createTexture();
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        gl.texImage2D(
+            gl.TEXTURE_2D, // target
+            0, // level
+            gl.RGBA, // 
+            gl.RGBA, // 
+            gl.UNSIGNED_BYTE,
+            document.getElementById('id_img') // data
+        );
+    
+        gl.texParameteri(
+            gl.TEXTURE_2D, 
+            gl.TEXTURE_MAG_FILTER, gl.NEAREST
+        );
+        gl.texParameteri(
+            gl.TEXTURE_2D,
+            gl.TEXTURE_MIN_FILTER, gl.NEAREST
+        );
+        gl.texParameteri(
+            gl.TEXTURE_2D,
+            gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE
+        );
+        gl.texParameteri(
+            gl.TEXTURE_2D,
+            gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE
+        );
+        gl.generateMipmap(gl.TEXTURE_2D);
+        
+        
+        gl.uniform1i(uMap, 0);
+
+        // 顶点数据
+        let vertices = new Float32Array([
+            -1.0, 1.0,
+            -1.0, -1.0,
+            1.0, -1.0,
+            1.0, 1.0
+        ]);
+        let vertexBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+        
+        let aPosition = gl.getAttribLocation(program, 'position');
+        gl.vertexAttribPointer(aPosition, 2, gl.FLOAT, false, 0, 0);
+        gl.enableVertexAttribArray(aPosition);
+
+        // 绘制 
+        
+
+        gl.clearColor(0, 0, 0, 1);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        gl.drawArrays(gl.TRIANGLE_FAN, 0, 4);
+    </script>
+        
+</body>
+</html>

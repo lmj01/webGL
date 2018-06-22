@@ -1,0 +1,169 @@
+<!doctype html>
+<html>
+	<head>
+		<title>two layer canvas</title>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+		<style>
+
+            #container {
+                position: relative;
+                width:400px;
+                height: 400px;
+                left:10px;
+                top:0px;
+                border: 2px solid red;
+            }
+            #layer1 {
+                width: 400px;
+                height: 400px;
+                position: absolute;
+                left: 0;
+                top:0;
+                z-index: 0;                
+            }
+            #layer2 {
+                width: 400px;
+                height: 400px;
+                position: absolute;
+                left: 0;
+                top: 0;
+                z-index: 1;
+            }
+            .anchor {
+                width: 32px;
+                height: 32px;
+                position: absolute;
+                border: none;
+                background: transparent;
+                outline: none;
+                z-index: 2;
+            }
+            #anchorMove {
+                background: url('./pan.png') no-repeat;
+                left: 200px;
+                top: 150px;
+            }
+            #anchorRotate {
+                background: url('./rotate.png') no-repeat;
+                left:200px;
+                top :100px;
+            }
+            #id_msg {
+                left: 500px;
+            }
+            
+        </style>
+        <script type="text/script" src="./jquery-1.10.2.js"></script>
+    </head>
+	<body>
+        <div id="container">
+            <canvas id="layer1"></canvas>
+            <canvas id="layer2"></canvas>
+            <button id="anchorMove" class="anchor"></button>
+            <button id="anchorRotate" class="anchor"></button>
+        </div>
+        <br />
+        <label><span id="id_msg">....</span></label>
+		<script>
+            let canvas1 = document.getElementById('layer1');
+            let canvas2 = document.getElementById('layer2');
+            let msg = document.getElementById('id_msg');
+            // make 1:1 ratio
+            canvas1.width = canvas1.height = 400;
+            canvas2.width = canvas2.height = 400;
+
+            var ctx1 = canvas1.getContext('2d');
+            var ctx2 = canvas2.getContext('2d');
+
+            // 背景层
+            var img = new Image();
+            img.onload = function(e) {
+                ctx1.drawImage(img, 0, 0);
+            }
+            img.src = './z-1048.jpg';
+            
+            // UI层
+            c2left = canvas2.offsetLeft;
+            c2top = canvas2.offsetTop;           
+            var shapes = [];
+            shapes.push({
+                name: 'shape1',
+                width: 150,
+                height: 100,
+                top: 0,
+                left: 0
+            });
+            function rotCor(angle, length) {
+                var cos = Math.cos(angle);
+                var sin = Math.sin(angle);
+
+                var newx = length * cos;
+                var newy = length * sin;
+
+                return {x:newx, y:newy};
+            }
+            function toRad(deg) {
+                return deg * Math.PI / 180.0;
+            }
+            function toDeg(rad) {
+                return rad * 180.0 / Math.PI;
+            }
+            shapes.forEach(function(shape) {
+                ctx2.save();
+                ctx2.translate(50, 50);		
+                shape.left += 50; shape.top += 50;
+                newAng = toRad(15);
+                ctx2.rotate(newAng);
+                ctx2.moveTo(0, 0);
+                ctx2.lineTo(200, 0);
+                ctx2.stroke();
+                ctx2.translate(200, 0);
+                var curRotCor = rotCor(newAng, 200); // Magic get the x,y cor after rotate.
+                shape.left += curRotCor.x; shape.top += curRotCor.y;
+                ctx2.rotate(-newAng);
+                ctx2.fillRect(0, -shape.height/2, shape.width, shape.height);
+                shape.top -= shape.height/2; // Move half up.
+                ctx2.restore();
+                
+                // Now I can make strokes with out transform at the same place:
+                ctx2.save();
+                ctx2.fillStyle = "transparent";
+                ctx2.strokeStyle = "#f00";
+                ctx2.lineWidth = 2;
+                ctx2.strokeRect(shape.left, shape.top, shape.width, shape.height);
+                ctx2.restore();
+            });
+            canvas2.addEventListener('click', function(e) {
+                var xy = getCursorPos(e);
+                shapes.forEach(function(shape) {
+                    if (xy.y > shape.top && 
+                        xy.y < shape.top + shape.height &&
+                        xy.x > shape.left &&
+                        xy.x < shape.left + shape.width) {
+                            //console.log('in shape: ', shape);
+                            msg.innerText = 'in shape';
+                        } else {
+                            msg.innerText = 'out shape';
+                        }
+                });
+                
+                function getCursorPos(e) {
+                    let rc = canvas2.getBoundingClientRect();
+                    var x = e.clientX - rc.left;
+                    var y = e.clientY - rc.top;
+                    return {x:x,y:y};
+                }
+            }) 
+            ctx2.fillStyle = 'transparent';
+
+            $('#anchorMove').on('click', function(e) {
+
+            })
+            $('#anchorRotate').on('click', function(e) {
+                
+            })
+
+		</script>
+	</body>
+</html>
