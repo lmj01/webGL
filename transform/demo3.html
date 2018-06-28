@@ -1,0 +1,215 @@
+<!doctype html>
+<html>
+<head>
+<!--
+<link rel="stylesheet" type="text/css" media="all" href="css/reset.css" />  reset css -->
+<script type="text/javascript" src="./jquery-1.10.2.js"></script>
+
+<style>
+    body{ background-color: ivory; }
+    #canvas{border:1px solid red;}
+</style>
+
+
+</head>
+
+<body>
+    <p>Rotate by dragging blue rotation handle</p>
+    <canvas id="canvas"></canvas>
+    <script>
+        function mqTransform(name, cb, options) {
+    
+            var canvas=document.getElementById(name);
+            var ctx=canvas.getContext("2d");  
+            var isDown=false;
+            var isMove = false;
+            var size = 300;
+            var width = canvas.width = size;
+            var height = canvas.height = size;
+            $('#'+name).css('width', size+'px');
+            $('#'+name).css('height', size+'px');
+
+            var cx=canvas.width/2;
+            var cy=canvas.height/2;
+            var w = 50;
+            var h = 50;
+            var r=0;
+            var m11 = 1, m12 = 0, m13 = cx;
+            var m21 = 0, m22 = 1, m23 = cy;
+            this.draw = function(){
+                ctx.clearRect(0,0,canvas.width,canvas.height);
+                drawRect();
+                drawMoveHandle(true);
+                drawRotationHandle(true);        
+            }
+            
+            this.show = function(){
+                $("#"+name).show();
+                $('#'+name).on('mousedown touchstart', handleMouseDown);
+                $('#'+name).on('mousemove touchmove', handleMouseMove);
+                $('#'+name).on('mouseup touchend', handleMouseUp);
+                $('#'+name).on('mouseout', handleMouseOut);                
+            }
+            this.hide = function(){
+                $("#"+name).hide();
+                $('#'+name).off('mousedown touchstart', handleMouseDown);
+                $('#'+name).off('mousemove touchmove', handleMouseMove);
+                $('#'+name).off('mouseup touchend', handleMouseUp);
+                $('#'+name).off('mouseout', handleMouseOut);                
+            }
+    
+            function drawRect(){
+                ctx.save();
+                let size = 200;
+                let hx = hy = size/2;
+                ctx.translate(cx,cy);
+                ctx.rotate(r);
+                let scale = {x:1,y:1,z:1};
+                ctx.font = "12px serif";		
+                ctx.fillText('mm', size/2-20-hx,size/2+20-hy);
+                ctx.beginPath();
+                ctx.moveTo(0-hx,0-hy); ctx.lineTo(0-hx,size-hy);ctx.lineTo(size-hx,size-hy);
+                let bFive = false;
+                let bTen = false;
+                for(var i = 1; i < size; i++) {
+                    if (i % 5 == 0) bFive = true;
+                    if (i % 10 == 0) bTen = true;
+                    // 水平的
+                    let x = bTen ? size-8 : (bFive ? size-5 : size-3);
+                    let y = bTen ? 8 : (bFive ? 5 : 3);
+                    ctx.moveTo(scale.x * i-hx, size-hy); ctx.lineTo(scale.x * i-hx, x-hy);
+                    if (bTen) ctx.fillText(i,scale.x*i-6-hx,size-10-hy);
+                    // 垂直的
+                    ctx.moveTo(0-hx, size-scale.y * i-hy); ctx.lineTo(y-hx, size-scale.y * i-hy);
+                    bFive = false;
+                    bTen = false;
+                }
+                ctx.stroke();
+                ctx.closePath();
+                // 弧线
+                ctx.beginPath();
+                ctx.arc(0-hx, size-hy, size, 0, -0.5 * Math.PI, true);
+                for (var i = 5; i < 90; i+=5) {
+                    var rad = (2 * Math.PI / 360) * i;
+                    var x = (Math.sin(rad) * size);
+                    var y = (size - Math.cos(rad) * size);
+                    ctx.save();
+                    ctx.translate(x-hx, y-hy);
+                    ctx.rotate((i-90)*Math.PI/180);
+                    ctx.translate(-x+hx,-y+hy);
+                    ctx.moveTo(x-hx, y-hy);
+                    ctx.lineTo(x-5-hx, y-hy);
+                    if (i % 15 == 0) ctx.fillText(i, x-20-hx, y+5-hy);
+                    ctx.restore();
+                }
+                ctx.stroke();
+                ctx.closePath();
+                ctx.restore();
+            }
+    
+            function drawRotationHandle(withFill){
+                ctx.save();
+                ctx.translate(cx,cy);
+                ctx.rotate(r);
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.lineTo(w/2+20, 0);        
+                ctx.lineTo(w/2+20, -20);
+                ctx.lineTo(w/2+40, -20);
+                ctx.lineTo(w/2+40, 20);
+                ctx.lineTo(w/2+20, 20);
+                ctx.lineTo(w/2+20, 0);
+    
+                ctx.closePath();
+                if(withFill){
+                    ctx.fillStyle="blue";
+                    ctx.fill();
+                }
+                ctx.restore();
+            }
+    
+            function drawMoveHandle(withFill){
+                ctx.save();
+                ctx.translate(cx,cy);
+                ctx.rotate(r);
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.lineTo(w/2-20, 0);        
+                ctx.lineTo(w/2-20, -20);
+                ctx.lineTo(w/2-40, -20);
+                ctx.lineTo(w/2-40, 20);
+                ctx.lineTo(w/2-20, 20);
+                ctx.lineTo(w/2-20, 0);
+    
+                ctx.closePath();
+                if(withFill){
+                    ctx.fillStyle="red";
+                    ctx.fill();
+                }
+                ctx.restore();
+            }
+    
+            function handleMouseDown(e){
+                e = e.type == 'touchstart' ? e.originalEvent.touches[0] : e;
+                var offset=$("#"+name).offset();
+                mouseX=parseInt(e.clientX-offset.left);
+                mouseY=parseInt(e.clientY-offset.top);
+                drawRotationHandle(false);
+                isDown = ctx.isPointInPath(mouseX,mouseY);
+                drawMoveHandle(false);
+                isMove = ctx.isPointInPath(mouseX, mouseY);
+            }
+    
+            function handleMouseUp(e){
+                isDown=false;
+                isMove = false;
+            }
+    
+            function handleMouseOut(e){
+                isDown=false;
+                isMove = false;
+            }
+    
+            function handleMouseMove(e) {
+                e = e.type == 'touchmove' ? e.originalEvent.touches[0] : e;
+                var offset=$("#"+name).offset();
+                mouseX=parseInt(e.clientX-offset.left);
+                mouseY=parseInt(e.clientY-offset.top);
+                var dx=mouseX-cx;
+                var dy=mouseY-cy;      
+                
+                if (isDown) {
+                    r=Math.atan2(dy,dx);
+                    cb({type:0, r:r});
+                    draw();
+                } 
+                if (isMove) {
+                    m13 += dx; m23 += dy;       
+                    cb({type:1,dx:dx,dy:dy});
+                    draw();
+                    updateTransform();
+                }
+            }
+            
+            function updateTransform() {                  
+                let val =  'matrix('+m11+','+m21+','+m12+','+m22+','+m13+','+m23+')';
+                $('#'+name).css('transform', val);
+                $('#'+name).css('-ms-transform', val);
+                $('#'+name).css('-webkit-transform', val);
+                $('#'+name).css('-o-transform', val);
+                $('#'+name).css('-moz-transform', val);
+            }
+                
+            return this;
+        };
+        var demo = mqTransform('canvas', function(e){
+            console.log(e.r);
+            console.log(e.dx);
+            console.log(e.dy);
+        });
+        demo.show();
+        demo.draw();
+    </script>
+    
+</body>
+</html>

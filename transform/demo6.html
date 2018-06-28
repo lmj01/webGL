@@ -1,0 +1,153 @@
+<!doctype html>
+<html>
+<head>
+<!--
+<link rel="stylesheet" type="text/css" media="all" href="css/reset.css" />  reset css -->
+<script type="text/javascript" src="./jquery-1.10.2.js"></script>
+
+<style>
+    body{ background-color: ivory; }
+    #canvas{border:1px solid red;}
+</style>
+
+
+</head>
+
+<body>
+    <p>Rotate by dragging blue rotation handle</p>
+    <canvas id="canvas" width=80 height=80></canvas>
+    <script>
+        function mqtransform(name, cb) {    
+            var canvas = document.getElementById(name);
+            var ctx = canvas.getContext("2d");
+            var size = 100;
+            var isDown=false;
+            var isMove = false;
+            var width = canvas.width = size;
+            var height = canvas.height = size;
+            $('#'+name).css('width', size+'px');
+            $('#'+name).css('height', size+'px');
+            var r=0;
+            var m11 = 1, m12 = 0, m13 = 0;
+            var m21 = 0, m22 = 1, m23 = 0;
+            this.draw = function(){
+                ctx.clearRect(0,0,canvas.width,canvas.height);       
+                drawMoveHandle(true);
+                drawRotationHandle(true);        
+            }
+            this.show = function(){
+                $("#"+name).show();
+            }
+            this.hide = function(){
+                $("#"+name).hide();
+            }
+    
+            function drawRotationHandle(withFill){
+                ctx.save();
+                ctx.translate(width/2,height/2);
+                ctx.rotate(r);
+                ctx.beginPath();
+                ctx.moveTo(-width/2, 1);
+                ctx.lineTo(10, 1);        
+                ctx.lineTo(10, height/2-1);
+                ctx.lineTo(width/2, 0);
+                ctx.lineTo(10, -height/2+1);
+                ctx.lineTo(10, -1);
+                ctx.lineTo(-width/2, -1);
+                ctx.closePath();
+                
+                if(withFill){
+                    ctx.fillStyle="blue";
+                    ctx.fill();
+                    ctx.fillText('R', 10, 0);
+                }
+                ctx.restore();
+            }
+    
+            function drawMoveHandle(withFill){
+                ctx.save();
+                ctx.translate(width/2,height/2);
+                ctx.rotate(r);
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.lineTo(-10, 0);        
+                ctx.lineTo(-10, -20);
+                ctx.lineTo(-40, -20);
+                ctx.lineTo(-40, 20);
+                ctx.lineTo(-10, 20);
+                ctx.lineTo(-10, 0);
+    
+                ctx.closePath();
+                if(withFill){
+                    ctx.fillStyle="red";
+                    ctx.fill();
+                    ctx.fillText('M', -10, 0);
+                }
+                ctx.restore();
+            }
+    
+            function handleMouseDown(e){
+                e = e.type == 'touchstart' ? e.originalEvent.touches[0] : e;
+                var offset=$("#"+name).offset();
+                mouseX=parseInt(e.clientX-offset.left);
+                mouseY=parseInt(e.clientY-offset.top);
+                drawRotationHandle(false);
+                isDown = ctx.isPointInPath(mouseX,mouseY);
+                drawMoveHandle(false);
+                isMove = ctx.isPointInPath(mouseX, mouseY);
+            }
+    
+            function handleMouseUp(e){
+                isDown=false;
+                isMove = false;
+            }
+    
+            function handleMouseOut(e){
+                isDown=false;
+                isMove = false;
+            }
+    
+            function handleMouseMove(e) {        
+                e = e.type == 'touchmove' ? e.originalEvent.touches[0] : e;
+                var offset=$("#"+name).offset();
+                mouseX=parseInt(e.clientX-offset.left);
+                mouseY=parseInt(e.clientY-offset.top);
+                var dx=mouseX-width/2;
+                var dy=mouseY-height/2;
+                if (isDown) {
+                    r=Math.atan2(dy,dx);
+                    cb({r:r});
+                    draw();
+                } 
+                if (isMove) {
+                    m13 += dx;
+                    m23 += dy;   
+                    updateTransform();        
+                    draw();
+                    cb({dx:dx,dy:dy});
+                }
+            }
+            function updateTransform() {
+                let val =  'matrix('+m11+','+m21+','+m12+','+m22+','+m13+','+m23+')';
+                $('#'+name).css('transform', val);
+                $('#'+name).css('-ms-transform', val);
+                $('#'+name).css('-webkit-transform', val);
+                $('#'+name).css('-o-transform', val);
+                $('#'+name).css('-moz-transform', val);
+            }
+            $('#'+name).on('mousedown touchstart', function(e){handleMouseDown(e);});
+            $('#'+name).on('mousemove touchmove', function(e){handleMouseMove(e);});
+            $('#'+name).on('mouseup touchend', function(e){handleMouseUp(e);});
+            $('#'+name).on('mouseout', function(e){handleMouseOut(e);});
+            return this;
+        } 
+        var demo = mqtransform('canvas', function(e){
+            console.log(e.r);
+            console.log(e.dx);
+            console.log(e.dy);        
+        });
+        demo.draw();
+    </script>
+    
+</body>
+</html>

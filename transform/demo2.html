@@ -1,0 +1,132 @@
+<!doctype html>
+<html>
+<head>
+<!--
+<link rel="stylesheet" type="text/css" media="all" href="css/reset.css" />  reset css -->
+<script type="text/javascript" src="./jquery-1.10.2.js"></script>
+
+<style>
+    body{ background-color: ivory; }
+    #canvas{border:1px solid red;}
+</style>
+
+<script>
+$(function(){
+
+    var canvas=document.getElementById("canvas");
+    var ctx=canvas.getContext("2d");
+
+    var canvasOffset=$("#canvas").offset();
+    var offsetX=canvasOffset.left;
+    var offsetY=canvasOffset.top;
+
+    var isDown=false;
+
+    var cx=canvas.width/2;
+    var cy=canvas.height/2;
+    var w;
+    var h;
+    var r=0;
+
+    var img=new Image();
+    img.onload=function(){
+        w=img.width/2;
+        h=img.height/2;
+        draw();
+    }
+    img.src="./test.png";
+
+
+    function draw(){
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+        drawRotationHandle(true);
+        drawRect();
+    }
+
+    function drawRect(){
+        ctx.save();
+        ctx.translate(cx,cy);
+        ctx.rotate(r);
+        ctx.drawImage(img,0,0,img.width,img.height,-w/2,-h/2,w,h);        
+        ctx.restore();
+    }
+
+    function drawRotationHandle(withFill){
+        ctx.save();
+        ctx.translate(cx,cy);
+        ctx.rotate(r);
+        ctx.beginPath();
+        ctx.moveTo(0,-1);
+        ctx.lineTo(w/2+20,-1);
+        ctx.lineTo(w/2+20,-7);
+        ctx.lineTo(w/2+30,-7);
+        ctx.lineTo(w/2+30,7);
+        ctx.lineTo(w/2+20,7);
+        ctx.lineTo(w/2+20,1);
+        ctx.lineTo(0,1);
+        ctx.closePath();
+        if(withFill){
+            ctx.fillStyle="blue";
+            ctx.fill();
+        }
+        ctx.restore();
+    }
+
+    function handleMouseDown(e){
+      e = e.originalEvent ? e.originalEvent.touches[0] : e;
+      mouseX=parseInt(e.clientX-offsetX);
+      mouseY=parseInt(e.clientY-offsetY);
+      uplog(mouseX+','+mouseY);
+      drawRotationHandle(false);
+      //isDown=ctx.isPointInPath(mouseX,mouseY);
+      isDown = true;
+      console.log(isDown);
+    }
+
+    function uplog(text) {
+        $('#log').text($('#log').text() + text + '\t');      
+    }
+
+    function handleMouseUp(e){
+      isDown=false;
+    }
+
+    function handleMouseOut(e){
+      isDown=false;
+    }
+
+    function handleMouseMove(e){
+      uplog('move:'+isDown);
+      if(!isDown){return;}
+      e = e.originalEvent ? e.originalEvent.touches[0] : e;
+      mouseX=parseInt(e.clientX-offsetX);
+      mouseY=parseInt(e.clientY-offsetY);
+      var dx=mouseX-cx;
+      var dy=mouseY-cy;
+      r=Math.atan2(dy,dx);
+      console.log('degree', r);
+      draw();
+    }
+
+/*
+    $("#canvas").mousedown(function(e){handleMouseDown(e);});
+    $("#canvas").mousemove(function(e){handleMouseMove(e);});
+    $("#canvas").mouseup(function(e){handleMouseUp(e);});
+    $("#canvas").mouseout(function(e){handleMouseOut(e);});
+*/
+    $('#canvas').on('mousedown touchstart', function(e){handleMouseDown(e);});
+    $('#canvas').on('mousemove touchmove', function(e){handleMouseMove(e);});
+    $('#canvas').on('mouseup touchend', function(e){handleMouseUp(e);});
+    $('#canvas').on('mouseout', function(e){handleMouseOut(e);});
+
+}); // end $(function(){});
+</script>
+
+</head>
+
+<body>
+    <p>Rotate by dragging blue rotation handle</p>
+    <canvas id="canvas" width=300 height=300></canvas>
+    <textarea id="log" rows='50' cols="100" ></textarea>
+</body>
+</html>
