@@ -41,50 +41,25 @@ void main()
     color = texture(diffuse, vec3(v_st, layer));
 }
 </script>
+<script src="./gl-matrix.js"></script>
+<script src="./auxiliary.js"></script>
 </head>
 <body>
     <canvas id="demo" width="400" height="400"></canvas>
     <script>
 
-        function getShaderSource(id) {
-            return document.getElementById(id).textContent.replace(/^\s+|\s+$/g, '');
-        }
-
-        function createShader(gl, source, type) {
-            var shader = gl.createShader(type);
-            gl.shaderSource(shader, source);
-            gl.compileShader(shader);
-            var log = gl.getShaderInfoLog(shader);
-            if (log) {
-                console.log(log);
-            }
-            return shader;
-        }
-
-        function createProgram(gl, vs, fs) {
-            var program = gl.createProgram();
-            gl.attachShader(program, vs); gl.deleteShader(vs);
-            gl.attachShader(program, fs); gl.deleteShader(fs);
-            gl.linkProgram(program);
-            var log = gl.getProgramInfoLog(program);
-            if (log) {
-                console.log(log);
-            }
-            return program;
-        }
-
+        
         let canvas = document.getElementById('demo');
         let gl = canvas.getContext( 'webgl2', { antialias: true } )
         if( gl == null ) { alert( 'requires webgl2 support!' ) }
-    
-        let vs = createShader(gl, getShaderSource('vs'), gl.VERTEX_SHADER);
-        let fs = createShader(gl, getShaderSource('fs'), gl.FRAGMENT_SHADER);
-        let program = createProgram(gl, vs, fs);
 
-        var mvpLoc = gl.getUniformLocation(program, 'MVP');
-        var diffuseLoc = gl.getUniformLocation(program, 'diffuse');
-        var layerLoc = gl.getUniformLocation(program, 'layer');
-
+        let render = new mqRender(gl);
+            
+        render.glsl.vs = mqShader.createShader(gl, mqShader.getCodeFromElement('vs'), gl.VERTEX_SHADER);
+        render.glsl.fs = mqShader.createShader(gl, mqShader.getCodeFromElement('fs'), gl.FRAGMENT_SHADER);
+        render.glsl.program = mqShader.createProgram(gl, render.glsl.vs, render.glsl.fs);
+        render.glsl.bindVariable(['position', 'texcoord'], ['MVP', 'diffuse', 'layer']);
+        
         // vertex position buffer 
         var positions = new Float32Array([
             -1.0, -1.0,
@@ -94,9 +69,7 @@ void main()
             -1.0, 1.0,
             -1.0, -1.0
         ]);
-        var vertexPosBuffer = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, vertexPosBuffer);
-        gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
+        render.glsl.posbuffer = render.glsl.bufferData(positions, gl.STATIC_DRAW);
         gl.bindBuffer(gl.ARRAY_BUFFER, null);
 
         // texture coordinate buffer

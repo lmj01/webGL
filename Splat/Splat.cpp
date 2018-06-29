@@ -28,8 +28,8 @@ const char* PezInitialize(int width, int height)
     QuadVao = CreateQuad();
     CubeVao = CreateCube();
     RayEndpointsProgram = CreateProgram("Volume.Vertex", 0, "Volume.Endpoints");
-    RaycastProgram = CreateProgram("Volume.Quad", 0, "Volume.Lighting");
-    //RaycastProgram = CreateProgram("Volume.Quad", 0, "Volume.Semitransparent");
+    //RaycastProgram = CreateProgram("Volume.Quad", 0, "Volume.Lighting");
+    RaycastProgram = CreateProgram("Volume.Quad", 0, "Volume.Semitransparent");
     WireframeProgram = CreateProgram("Wireframe.VS", "Wireframe.GS", "Wireframe.FS");
     StreamlineProgram = CreateProgram("Streamline.VS", "Streamline.GS", "Streamline.FS");
     RayEndPointsSurface = CreateSurface(width, height, 3, 2);
@@ -134,7 +134,7 @@ void PezUpdate(unsigned int elapsedMicroseconds)
 
     Matrix4 model = Matrix4( Trackball.GetRotation(), Vector3(0, 0, 0) );
     
-    const bool Autorotate = false;
+    const bool Autorotate = true;
     if (Autorotate) {
         static float radians = 0.2f;
         radians += 0.0000005f * elapsedMicroseconds;
