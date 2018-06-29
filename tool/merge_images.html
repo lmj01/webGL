@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+    #canvas {
+        border: 1px solid red;
+    }
+    button {
+        top: 0px;
+        left: 5px;
+    }
+    img {
+        left: 500px;
+    }
+</style>
+<script src="./jquery-1.10.2.js"></script>
+</head>
+<body>
+    <button width="50" height="40" onclick="exportImage();">导出所有图片为一张</button>
+    <br />
+    <canvas id="canvas"></canvas> 
+    <br />
+    <img id="img" src="" alt="ss">   
+    <script>
+
+        var canvas = document.getElementById('canvas');
+        var ctx = canvas.getContext('2d');
+        let size = 400;
+        let num_x = 16;
+        let num_y = 17;
+        canvas.width = size * num_x;
+        canvas.height = size * num_y;
+        $('#canvas').css('width', canvas.width+'px');
+        $('#canvas').css('height', canvas.height+'px');
+
+        var allImg = [];
+        var allUrl = [];
+        for (let i=0;i<num_x*num_y;i++) {
+            let name = i < 10 ? '00'+i : (i < 100 ? '0'+i : i); 
+            let url = '/tool/img/z-1'+ name +'.jpg';
+            allUrl.push(url);
+        }
+        function exportImage() {
+            var idx = 0;
+            for (let i=0;i<num_y;i++) {
+                for (let j=0;j<num_x;j++) {
+                    ctx.drawImage(allImg[idx], 0 + j * size, 0 + i * size);
+                    idx++;
+                }
+            }
+            var img = document.getElementById('img');
+            img.src = canvas.toDataURL('image/jpeg');
+        }
+
+
+        // Image loading global variables
+        var loadcount = 0;
+        var loadtotal = 0;
+        var preloaded = false;
+        
+        // Load images
+        function loadImagesFunc(imagefiles) {
+            // Initialize variables
+            loadcount = 0;
+            loadtotal = imagefiles.length;
+            preloaded = false;
+        
+            // Load the images
+            var loadedimages = [];
+            for (var i=0; i<imagefiles.length; i++) {
+                // Create the image object
+                var image = new Image();
+        
+                // Add onload event handler
+                image.onload = function () {
+                    loadcount++;
+                    if (loadcount == loadtotal) {
+                        // Done loading
+                        preloaded = true;
+                    }
+                };
+        
+                // Set the source url of the image
+                image.src = imagefiles[i];
+        
+                // Save to the image array
+                loadedimages[i] = image;
+            }
+        
+            // Return an array of images
+            return loadedimages;
+        }
+        allImg =    loadImagesFunc(allUrl);
+    </script>
+</body>
+</html>
