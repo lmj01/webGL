@@ -52,18 +52,28 @@ mqShader.prototype.enableAttr = function(gl, name, on) {
 	else 
 	 	gl.disableVertexAttribArray(this.attrloc[name]);
 }
-mqShader.prototype.bindVariable = function(gl, attributes, uniform) {
-	if (!this.program) return;
-	for (i in attributes) {
-		this.attrloc[attributes[i]] = 
-			gl.getAttribLocation(this.program, attributes[i]);
-	}
-	for (i in uniform) {
-		this.uniformloc[uniform[i]] = 
-			gl.getUniformLocation(this.program, uniform[i]);
-	}
+mqShader.prototype.bindLocation = function(gl, attribute, uniform) {
+	if (!gl.isProgram(this.program))
+		throw "bindLocation need a valid program object";
+	var that = this;
+	attribute.forEach(function(name) {
+		that.attrloc[name] = gl.getAttribLocation(that.program, name);
+	})
+	uniform.forEach(function(name) {
+		that.uniformloc[name] = gl.getUniformLocation(that.program, name);
+	})
 }
-mqShader.prototype.enable = function(gl, npos, ntex) {
+mqShader.prototype.getAttrLoc = function(name) {
+	if(!this.attrrloc.hasOwnProperty(name)) 
+		throw "no such attribute name" + name;
+	return this.attrloc[name];
+}
+mqShader.prototype.getUniformLoc = function(name) {
+	if (!this.uniformloc.hasOwnProperty(name))
+		throw "no such uniform name" + name;
+	return this.uniformloc[name];
+}
+mqShader.prototype.createVAO = function(gl, npos, ntex) {
 	this.vao = gl.createVertexArray();
 	gl.bindVertexArray(this.vao);
 
@@ -151,7 +161,6 @@ function mqRender(gl) {
 	// texture
 	this.texVolume = this.gl.createTexture();
 	// shader
-	this.glsl = new mqShader(gl);
 	// uniform variable
 	this.umv = null;
 	this.uproject = null;
@@ -253,3 +262,12 @@ mqRender.prototype.delayDraw = function(time, immediately) {
 	this.delaytimer = setTimeout(function(){that.draw();}, time);
 }
 
+// image data
+function loadImage(url, onload) {
+	var img = new Image();
+	img.src = url;
+	img.onload = function(){
+		onload(img);
+	}
+	return img;
+}

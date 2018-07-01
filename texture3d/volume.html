@@ -42,24 +42,29 @@ void main()
 }
 </script>
 <script src="./gl-matrix.js"></script>
+<script src="./signals.js"></script>
 <script src="./auxiliary.js"></script>
 </head>
 <body>
     <canvas id="demo" width="400" height="400"></canvas>
     <script>
 
-        
+        let myevent = {
+            loadtex: new signals.Signal()
+        }
         let canvas = document.getElementById('demo');
         let gl = canvas.getContext( 'webgl2', { antialias: true } )
         if( gl == null ) { alert( 'requires webgl2 support!' ) }
 
         let render = new mqRender(gl);
-            
-        render.glsl.vs = mqShader.createShader(gl, mqShader.getCodeFromElement('vs'), gl.VERTEX_SHADER);
-        render.glsl.fs = mqShader.createShader(gl, mqShader.getCodeFromElement('fs'), gl.FRAGMENT_SHADER);
-        render.glsl.program = mqShader.createProgram(gl, render.glsl.vs, render.glsl.fs);
-        render.glsl.bindVariable(['position', 'texcoord'], ['MVP', 'diffuse', 'layer']);
-        
+        let glsl = new mqShader();
+        glsl.vs = glsl.createShader(gl, glsl.getCodeFromElement('vs'), gl.VERTEX_SHADER);
+        glsl.fs = glsl.createShader(gl, glsl.getCodeFromElement('fs'), gl.FRAGMENT_SHADER);
+        glsl.program = glsl.createProgram(gl, glsl.vs, glsl.fs);
+        let attrArray = ['position', 'texcoord'];
+        let uniformArray = ['MVP', 'diffuse', 'layer'];
+        glsl.bindLocation(gl, attrArray, uniformArray);
+                
         // vertex position buffer 
         var positions = new Float32Array([
             -1.0, -1.0,
@@ -69,8 +74,7 @@ void main()
             -1.0, 1.0,
             -1.0, -1.0
         ]);
-        render.glsl.posbuffer = render.glsl.bufferData(positions, gl.STATIC_DRAW);
-        gl.bindBuffer(gl.ARRAY_BUFFER, null);
+        glsl.posbuffer = glsl.bufferData(gl, positions, gl.STATIC_DRAW);
 
         // texture coordinate buffer
         var texCoords = new Float32Array([
@@ -81,101 +85,46 @@ void main()
             0.0, 0.0,
             0.0, 1.0
         ]);
-        var vertexTexBuffer = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, vertexTexBuffer);
-        gl.bufferData(gl.ARRAY_BUFFER, texCoords, gl.STATIC_DRAW);
-        gl.bindBuffer(gl.ARRAY_BUFFER, null);
-
-        // for vertex array buffer 
-        var vao = gl.createVertexArray();
-        gl.bindVertexArray(vao);
-
-        let vsPosLoc = 0; // same as glsl layout qualifier
-        gl.enableVertexAttribArray(vsPosLoc);
-        gl.bindBuffer(gl.ARRAY_BUFFER, vertexPosBuffer);
-        gl.vertexAttribPointer(vsPosLoc, 2, gl.FLOAT, false, 0, 0);
-        gl.bindBuffer(gl.ARRAY_BUFFER, null);
-
-        let vsTexLoc = 4; // same as glsl layout qualifier
-        gl.enableVertexAttribArray(vsTexLoc);
-        gl.bindBuffer(gl.ARRAY_BUFFER, vertexTexBuffer);
-        gl.vertexAttribPointer(vsTexLoc, 2, gl.FLOAT,false, 0, 0);
-        gl.bindBuffer(gl.ARRAY_BUFFER, null);
-
-        gl.bindVertexArray(null);
+        glsl.texbuffer = glsl.bufferData(gl, texCoords, gl.STATIC_DRAW);
+        glsl.texloc = 4;
+        glsl.posloc = 0;
+        glsl.createVAO(gl, 'position', 'texcoord');
         
-        // image data
-        function loadImage(url, onload) {
-            var img = new Image();
-            img.src = url;
-            img.onload = function(){
-                onload(img);
-            }
-            return img;
-        }
-        
-        var tex2darray = gl.createTexture();
+        myevent.loadtex.add(work_render);
+
         loadImage('/texture3d/test272.jpeg', function(img) {
-            let size = 400;
-            let numx = 16;
-            let numy = 17;
-            var tmpcanvas = document.createElement('canvas');
-            tmpcanvas.width = size * numx;
-            tmpcanvas.height = size * numy;
-            var tmpctx = tmpcanvas.getContext('2d');
-            tmpctx.drawImage(img, 0, 0);
-            
-            gl.activeTexture(gl.TEXTURE0);
-            gl.bindTexture(gl.TEXTURE_2D_ARRAY, tex2darray);
-            gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_BASE_LEVEL, 0);
-            gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MAX_LEVEL, Math.log2(size));
-            gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-            gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-            gl.texStorage3D(
-                gl.TEXTURE_2D_ARRAY,
-                Math.log2(size),
-                gl.RGBA8,
-                size, 
-                size, 
-                numx*numy
-            );
-            for (let i=0; i<numy; i++) {
-                for (let j=0; j<numx; j++) {
-                    var imageData = tmpctx.getImageData(0+j*size, 0+i*size, size, size);
-                    var pixels = new Uint8Array(imageData.data.buffer);
-                    gl.texSubImage3D(gl.TEXTURE_2D_ARRAY, 0, 
-                        0, 0, j+i*numx,
-                        size, size, 1,
-                        gl.RGBA, gl.UNSIGNED_BYTE, pixels
-                    );
-                }
-            }
-            work_render(numx*numy);
+            render.loadTextureArray(img, 400, 16, 17);
+            myevent.loadtex.dispatch(16*17);
         });
-
+                
         function work_render(totalFrame) {   
+                     
+            gl.useProgram(glsl.program);
+            gl.bindVertexArray(glsl.vao);
             
-            gl.useProgram(program);
-            gl.bindVertexArray(vao);
-            
+            glsl.enableAttr(gl, 'position', true);
+            glsl.enableAttr(gl, 'texcoord', true);
+
+            gl.activeTexture(gl.TEXTURE0);
+            gl.bindTexture(gl.TEXTURE_2D_ARRAY, render.texVolume);
+
             var matrix = new Float32Array([
                 1.0, 0.0, 0.0, 0.0,
                 0.0, 1.0, 0.0, 0.0,
                 0.0, 0.0, 1.0, 0.0,
                 0.0, 0.0, 0.0, 1.0
             ]);
-            gl.uniformMatrix4fv(mvpLoc, false, matrix);
-            gl.uniform1i(diffuseLoc, 0);
+            gl.uniformMatrix4fv(glsl.getUniformLoc('MVP'), false, matrix);
+            gl.uniform1i(glsl.getUniformLoc('diffuse'), 0);
             
             var frame = 0;
             (function render() {
                 // -- Render
                 gl.clearColor(1.0, 1.0, 1.0, 1.0);
                 gl.clear(gl.COLOR_BUFFER_BIT);
-                gl.uniform1i(layerLoc, frame);
+                gl.uniform1i(glsl.getUniformLoc('layer'), frame);
                 
                 frame = (frame + 1) % totalFrame;
-                
                 gl.drawArrays(gl.TRIANGLES, 0, 6);
                 
                 setTimeout( function(){
