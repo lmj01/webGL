@@ -31,7 +31,7 @@ const float uContrast = 1.0;
 const float uSaturation = 0.0;
 const float uPower = 1.0;
 
-const int uSamples = 256;
+const int uSamples = 1024;
 const float uDensityFactor = 5.0;
 const float uIsoValue = 0.45;
 const vec4 uIsoColour = vec4(1.0, 1.0, 0.8, 1.0);
@@ -244,27 +244,34 @@ void main()
 <script src="./auxiliary.js"></script>
 </head>
 <body>
-    <canvas id="demo" width="400" height="400"></canvas>
+    <canvas id="demo" width="600" height="800"></canvas>
     <br />
     <button onclick="rotateX();">rotate-x</button>
     <button onclick="rotateY();">rotate-y</button>
     <button onclick="rotateXY();">rotate-xy</button>
     <script>
-        let width = 256;//400;
-        let height = 256;//400;
-        let depth = 256;//272;
+        let def_width = 256;
+        let def_height = 256;
+        let def_depth = 256;
+        let def_slicex = 16;
+        let def_slicey = 16;
+        let no_def = true;
+        let width = no_def ? 400 : def_width;
+        let height = no_def ? 400 : def_height;
+        let depth = no_def ? 272 : def_depth;
+        let slicex = no_def ? 16 : def_slicex;
+        let slicey = no_def ? 17 : def_slicey;
         let myevent = {
             loadtex: new signals.Signal()
         }
         let canvas = document.getElementById('demo');
-        canvas.width = width;
-        canvas.height = height;
-        canvas.style.cssText = 'width:'+width+'px;height:'+height+'px;margin:0px;';
+        //canvas.width = width;
+        //canvas.height = height;
+        //canvas.style.cssText = 'width:'+width+'px;height:'+height+'px;margin:0px;';
         let gl = canvas.getContext( 'webgl2', { antialias: true } )
         if( gl == null ) { alert( 'requires webgl2 support!' ) }
 
-        var render = new mqRender(gl);
-        render.vp = new mqViewport(0, 0, width, height);
+        var render = new mqRender(gl, width, height, depth, slicex, slicey);
         let glsl = new mqShader();
         glsl.vs = glsl.createShader(gl, glsl.getCodeFromElement('vs'), gl.VERTEX_SHADER);
         glsl.fs = glsl.createShader(gl, glsl.getCodeFromElement('fs'), gl.FRAGMENT_SHADER);
@@ -277,17 +284,13 @@ void main()
         render.glsl = glsl;
         myevent.loadtex.add(work_render);
 
-        if (false) {
+        if (no_def) {
             loadImage('/texture3d/test272.jpeg', function(img) {
-                let slicex = 16;
-                let slicey = 17;
-                render.loadTextureArray(img, 400, slicex, slicey);
+                render.loadTextureArray(img, width, slicex, slicey);
                 myevent.loadtex.dispatch(slicex * slicey);
             });
         } else {
             loadImage('/texture3d/data.jpg', function(img) {
-                let slicex = 16;
-                let slicey = 16;
                 render.loadTextureArray(img, width, slicex, slicey);
                 myevent.loadtex.dispatch(slicex * slicey);
             });
@@ -316,11 +319,15 @@ void main()
                 gl.clear(gl.COLOR_BUFFER_BIT);
                 gl.viewport(render.vp.x, render.vp.y, render.vp.width, render.vp.height);
 
+                render.mv.push();
+                
                 render.rayCamera();
                 render.updateMatrix();
                 gl.uniformMatrix4fv(glsl.getUniformLoc('uiproject'), false, render.uiproject);                
                 gl.drawArrays(glsl.drawtype, 0, glsl.numItems);
                 
+                render.mv.pop();
+
                 setTimeout( function(){
                     requestAnimationFrame(anonymousRender);
                     //render.rotateX(degree);

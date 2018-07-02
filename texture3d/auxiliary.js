@@ -156,7 +156,7 @@ function mqViewport(x, y, width, height) {
 /**
  * render
  */
-function mqRender(gl) {
+function mqRender(gl, width, height, depth, slicex, slicey) {
 	this.gl = gl;
 
 	this.translate = [0,0,0];
@@ -168,11 +168,11 @@ function mqRender(gl) {
 	this.orientation = 1.0; // 1.0f for RH, -1.0 for LH
 	this.fov = 45.0;
 	this.focalLength = 1.0 / Math.tan(0.5 * this.fov * Math.PI / 180.0);
-	this.resolution = [400,400, 272];
-	this.res = [400,400,272];
+	this.resolution = [width, height, depth];
+	this.res = [width, height, depth];
 	this.dims = [1.0, 1.0, 1.0];
 	this.scaling = this.dims;
-	this.tiles = [16, 17];
+	this.tiles = [slicex, slicey];
 	this.iscale = [1.0 / this.scaling[0], 1.0 / this.scaling[1], 1.0 / this.scaling[2]];
 	this.center = [0.5 * this.scaling[0], 0.5 * this.scaling[2], 0.5 * this.scaling[2]];
 	this.focus = this.center;
@@ -190,7 +190,7 @@ function mqRender(gl) {
 	this.uiproject = null; // inverse projection
 	this.unormal = null; // normal 
 	// viewport 
-	this.vp = null;
+	this.vp = new mqViewport(0, 0, width, height);
 	// delayed render
 	this.delaytimer = null;
 
