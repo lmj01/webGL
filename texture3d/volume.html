@@ -9,13 +9,10 @@ precision highp float;
 precision highp int;
 
 uniform mat4 umv;
-layout(location = 0) in vec2 position;
-layout(location = 1) in vec2 texcoord;
-out vec2 vs_tex;
+layout(location = 0) in vec3 position;
 void main()
 {
-    vs_tex = texcoord;    
-    gl_Position = umv * vec4(position, 0.0, 1.0);
+    gl_Position = umv * vec4(position, 1.0);
 }
 </script>
 <script id="fs" type="x-shader/x-fragment">
@@ -28,7 +25,6 @@ const int maxSamples = 256;
 
 const vec3 uBBMin = vec3(0, 0, 0);
 const vec3 uBBMax = vec3(1, 1, 1);
-const vec3 uResolution = vec3(400, 400, 272);
 
 const float uBrightness = -0.117;
 const float uContrast = 1.0;
@@ -50,7 +46,8 @@ uniform mat4 umv; // modelview matrix
 uniform mat4 uproject; // projection matrix 
 uniform mat4 uiproject; // invert projection matrix 
 uniform mat4 unormal; // normal matrix 
-uniform vec4 uvp; // viewport 
+uniform vec4 uvp; // viewport
+uniform vec3 uResolution; 
 
 // light moves with camera
 const vec3 lightPos = vec3(0.5, 0.5, 5.0);
@@ -103,7 +100,6 @@ vec2 rayIntersectBox(vec3 rayDirection, vec3 rayOrigin) {
     float front = max(max(imin.x, 0.0), max(imin.y, imin.z));
     return vec2(back, front);
 }
-in vec2 vs_tex;
 out vec4 color;
 
 void main()
@@ -137,6 +133,7 @@ void main()
 
     vec3 rayStart = rayOrigin + rayDirection * intersection.y;
     vec3 rayStop = rayOrigin + rayDirection * intersection.x;
+
     vec3 step = normalize(rayStop - rayStart) * stepSize;
     vec3 pos = rayStart;
 
@@ -228,7 +225,7 @@ void main()
     color = vec4(colour, 1.0 - T);
 
     // wirte depth 
-    if (true) {             
+    if (false) {             
         vec4 clip_space_pos = uproject * umv * vec4(rayStart, 1.0);
         float ndc_depth = clip_space_pos.z / clip_space_pos.w;
         float depth = (((gl_DepthRange.far - gl_DepthRange.near) * ndc_depth) +
@@ -253,34 +250,48 @@ void main()
     <button onclick="rotateY();">rotate-y</button>
     <button onclick="rotateXY();">rotate-xy</button>
     <script>
-
+        let width = 256;//400;
+        let height = 256;//400;
+        let depth = 256;//272;
         let myevent = {
             loadtex: new signals.Signal()
         }
         let canvas = document.getElementById('demo');
+        canvas.width = width;
+        canvas.height = height;
+        canvas.style.cssText = 'width:'+width+'px;height:'+height+'px;margin:0px;';
         let gl = canvas.getContext( 'webgl2', { antialias: true } )
         if( gl == null ) { alert( 'requires webgl2 support!' ) }
 
         var render = new mqRender(gl);
-        render.vp = new mqViewport(0, 0, 400, 400);
+        render.vp = new mqViewport(0, 0, width, height);
         let glsl = new mqShader();
         glsl.vs = glsl.createShader(gl, glsl.getCodeFromElement('vs'), gl.VERTEX_SHADER);
         glsl.fs = glsl.createShader(gl, glsl.getCodeFromElement('fs'), gl.FRAGMENT_SHADER);
         glsl.program = glsl.createProgram(gl, glsl.vs, glsl.fs);
         let attrArray = ['position', 'texcoord'];
-        let uniformArray = ['uvolume', 'umv','uproject', 'uiproject', 'unormal', 'uvp'];
+        let uniformArray = ['uvolume', 'umv','uproject', 'uiproject', 'unormal', 'uvp', 'uResolution'];
         glsl.bindLocation(gl, attrArray, uniformArray);
                 
         glsl.createVAO(gl, 'position', 'texcoord');
         render.glsl = glsl;
         myevent.loadtex.add(work_render);
 
-        loadImage('/texture3d/test272.jpeg', function(img) {
-            let slicex = 16;
-            let slicey = 17;
-            render.loadTextureArray(img, 400, slicex, slicey);
-            myevent.loadtex.dispatch(slicex * slicey);
-        });
+        if (false) {
+            loadImage('/texture3d/test272.jpeg', function(img) {
+                let slicex = 16;
+                let slicey = 17;
+                render.loadTextureArray(img, 400, slicex, slicey);
+                myevent.loadtex.dispatch(slicex * slicey);
+            });
+        } else {
+            loadImage('/texture3d/data.jpg', function(img) {
+                let slicex = 16;
+                let slicey = 16;
+                render.loadTextureArray(img, width, slicex, slicey);
+                myevent.loadtex.dispatch(slicex * slicey);
+            });
+        }
                 
         function work_render(totalFrame) {  
             
@@ -295,14 +306,16 @@ void main()
 
             gl.uniform1i(glsl.getUniformLoc('uvolume'), 0);
             gl.uniformMatrix4fv(glsl.getUniformLoc('uiproject'), false, render.uiproject);            
-            gl.uniform4fv(glsl.getUniformLoc('uvp'), new Float32Array([0, 0, 400, 400]));
+            gl.uniform4fv(glsl.getUniformLoc('uvp'), new Float32Array([0, 0, width, height]));
+            gl.uniform3fv(glsl.getUniformLoc('uResolution'), new Float32Array([width,height,depth]));
 
             var degree = 0;
             (function anonymousRender() {
                 // -- Render
                 gl.clearColor(1.0, 1.0, 1.0, 1.0);
                 gl.clear(gl.COLOR_BUFFER_BIT);
-                
+                gl.viewport(render.vp.x, render.vp.y, render.vp.width, render.vp.height);
+
                 render.rayCamera();
                 render.updateMatrix();
                 gl.uniformMatrix4fv(glsl.getUniformLoc('uiproject'), false, render.uiproject);                
@@ -310,7 +323,7 @@ void main()
                 
                 setTimeout( function(){
                     requestAnimationFrame(anonymousRender);
-                    render.rotateX(degree);
+                    //render.rotateX(degree);
                     render.rotateY(degree);
                     degree++;
                     if (degree > 360) degree = 0;
