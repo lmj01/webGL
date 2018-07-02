@@ -9,8 +9,11 @@ function mqShader() {
 	this.vao = null;
 	this.posbuffer = null;
 	this.texbuffer = null;
+	this.itemSize = null;
+	this.numItems = null;
 	this.posloc = null; // same as glsl layout qualifier
 	this.texloc = null;
+	this.drawtype = null;
 	this.uniformloc = []; // uniform name for location
 	this.attrloc = []; // attributes location
 }
@@ -45,13 +48,6 @@ mqShader.prototype.bufferData = function(gl, data, type) {
 	gl.bindBuffer(gl.ARRAY_BUFFER, null);
 	return buffer;
 }
-mqShader.prototype.enableAttr = function(gl, name, on) {
-	if (!this.attrloc.hasOwnProperty(name)) return;
-	if (on)
-		gl.enableVertexAttribArray(this.attrloc[name]);
-	else 
-	 	gl.disableVertexAttribArray(this.attrloc[name]);
-}
 mqShader.prototype.bindLocation = function(gl, attribute, uniform) {
 	if (!gl.isProgram(this.program))
 		throw "bindLocation need a valid program object";
@@ -65,28 +61,46 @@ mqShader.prototype.bindLocation = function(gl, attribute, uniform) {
 }
 mqShader.prototype.getAttrLoc = function(name) {
 	if(!this.attrrloc.hasOwnProperty(name)) 
-		throw "no such attribute name" + name;
+		throw "no such attribute name : " + name;
 	return this.attrloc[name];
 }
 mqShader.prototype.getUniformLoc = function(name) {
 	if (!this.uniformloc.hasOwnProperty(name))
-		throw "no such uniform name" + name;
+		throw "no such uniform name : " + name;
 	return this.uniformloc[name];
 }
 mqShader.prototype.createVAO = function(gl, npos, ntex) {
 	this.vao = gl.createVertexArray();
 	gl.bindVertexArray(this.vao);
 
-	this.enableAttr(npos, true);
+	var positionData = 
+		//new Float32Array([1.0,1.0, -1.0,1.0, 1.0,-1.0, -1.0,-1.0]);
+		new Float32Array([-1.0,-1.0, 1.0,-1.0, 1.0,1.0, 1.0,1.0, -1.0,1.0, -1.0,-1.0]);
+	this.posbuffer = this.bufferData(gl, positionData, gl.STATIC_DRAW);
+
+	var texcoordData = 
+		//new Float32Array([1.0,1.0, 0.0,1.0, 1.0,0.0, 0.0,0.0]);
+		new Float32Array([0.0,1.0, 1.0,1.0, 1.0,0.0, 1.0,0.0, 0.0,0.0, 0.0,1.0]);
+	this.texbuffer = this.bufferData(gl, texcoordData, gl.STATIC_DRAW);
+	this.drawtype = 
+		gl.TRIANGLES;
+		//gl.TRIANGLE_STRIP;
+	this.itemSize = 2;
+	this.numItems = 6;//4;
+
+	// same as in glsl layout qualifier
+	this.posloc = 0;
+	this.texloc = 1;
+	gl.enableVertexAttribArray(this.posloc);
 	gl.bindBuffer(gl.ARRAY_BUFFER, this.posbuffer);
-	gl.vertexAttribPointer(this.posloc, 2, gl.FLOAT, false, 0, 0);
+	gl.vertexAttribPointer(this.posloc, this.itemSize, gl.FLOAT, false, 0, 0);
 	gl.bindBuffer(gl.ARRAY_BUFFER, null);
-
-	this.enableAttr(ntex, true);
+/*
+	gl.enableVertexAttribArray(this.texloc);
 	gl.bindBuffer(gl.ARRAY_BUFFER, this.texbuffer);
-	gl.vertexAttribPointer(this.texloc, 2, gl.FLOAT,false, 0, 0);
+	gl.vertexAttribPointer(this.texloc, this.itemSize, gl.FLOAT,false, 0, 0);
 	gl.bindBuffer(gl.ARRAY_BUFFER, null);
-
+*/
 	gl.bindVertexArray(null);	
 }
 
@@ -113,20 +127,20 @@ mqMatrix.prototype.pop = function() {
 	return this.m;
 }
 mqMatrix.prototype.multiply = function(mat) {
-	mat4.multiply(this.m, mat);
+	mat4.multiply(this.m, this.m, mat);
 }
 mqMatrix.prototype.identity = function() {
 	mat4.identity(this.m);
 }
 mqMatrix.prototype.scale = function(s) {
-	mat4.scale(this.m, s);
+	mat4.scale(this.m, this.m, s);
 }
 mqMatrix.prototype.translate = function(t) {
-	mat4.translate(this.m, t);
+	mat4.translate(this.m, this.m, t);
 }
 mqMatrix.prototype.rotate = function(angle, v) {
 	var rad = angle * Math.PI / 180.0;
-	mat4.rotate(this.m, rad, v);
+	mat4.rotate(this.m, this.m, rad, v);
 }
 
 /**
@@ -154,6 +168,14 @@ function mqRender(gl) {
 	this.orientation = 1.0; // 1.0f for RH, -1.0 for LH
 	this.fov = 45.0;
 	this.focalLength = 1.0 / Math.tan(0.5 * this.fov * Math.PI / 180.0);
+	this.resolution = [400,400, 272];
+	this.res = [400,400,272];
+	this.dims = [1.0, 1.0, 1.0];
+	this.scaling = this.dims;
+	this.tiles = [16, 17];
+	this.iscale = [1.0 / this.scaling[0], 1.0 / this.scaling[1], 1.0 / this.scaling[2]];
+	this.center = [0.5 * this.scaling[0], 0.5 * this.scaling[2], 0.5 * this.scaling[2]];
+	this.focus = this.center;
 	
 	this.mv = new mqMatrix();
 	this.project = new mqMatrix();
@@ -161,13 +183,12 @@ function mqRender(gl) {
 	// texture
 	this.texVolume = this.gl.createTexture();
 	// shader
-	// uniform variable
-	this.umv = null;
-	this.uproject = null;
-	this.unormal = null;
-	this.umvloc = null;
-	this.uprojectloc = null;
-	this.unormalloc = null;
+	this.glsl = null;
+	// uniform matrix variables
+	this.umv = null;	// modelview
+	this.uproject = null; // projection
+	this.uiproject = null; // inverse projection
+	this.unormal = null; // normal 
 	// viewport 
 	this.vp = null;
 	// delayed render
@@ -217,24 +238,65 @@ mqRender.prototype.loadTextureArray = function(img, size, numx, numy) {
 	}
 }
 mqRender.prototype.setPerspective = function(fovy, aspect, znear, zfar) {
-	this.project.m = mat4.perspective(fovy, aspect, znear, zfar);
+	mat4.perspective(this.project.m, fovy, aspect, znear, zfar);
 }
 mqRender.prototype.updateMatrix = function() {
-	this.gl.uniformMatrix4fv(this.umvloc, false, this.mv.m);
-	this.gl.uniformMatrix4fv(this.uprojectloc, false, this.project.m);
-	if (this.unormalloc) {
-		var normalmat = mat4.create(this.mv.m);
-		mat4.inverse(normalmat);
-		mat4.transpose(normalmat);
-		this.gl.uniformMatrix4fv(this.unormalloc, false, normalmat);
-	}
+	this.gl.uniformMatrix4fv(this.glsl.getUniformLoc('umv'), false, this.mv.m);
+	this.gl.uniformMatrix4fv(this.glsl.getUniformLoc('uproject'), false, this.project.m);
+	var normalmat = mat4.create(this.mv.m);
+	mat4.invert(normalmat, normalmat);
+	mat4.transpose(normalmat, normalmat);
+	if (this.glsl) {
+		this.gl.uniformMatrix4fv(this.glsl.getUniformLoc('unormal'), false, normalmat);
+	}	
 }
 mqRender.prototype.camera = function() {
-	this.mv.identity();
-}
-mqRender.prototype.rayCamera = function() {
+	// apply translation to origin, any rotation and scaling
 	this.mv.identity();
 	this.mv.translate(this.translate);
+	// adjust center of rotation, default is same as focal point so this does nothing
+	adjust = [-(this.focus[0] - this.center[0]), -(this.focus[1]-this.center[1]), -(this.focus[2] - this.center[2])];
+	this.mv.translate(adjust);
+
+	// rotate model
+	var rotmat = mat4.create();
+	mat4.fromQuat(rotmat, this.rotate);
+	this.mv.multiply(rotmat);
+
+	// adjust back for rotation center
+	adjust.forEach(function(element){
+		element *= element * -1;
+	})
+	//adjust = [this.focus[0] - this.center[0], this.focus[1] - this.center[1], this.focus[2] - this.center[2]];
+	this.mv.translate(adjust);
+
+	// tanslate back by center of model to align eye with model center
+	this.mv.translate([-this.focus[0], -this.focus[1], -this.focus[2] * this.orientation]);
+
+	// perspective matrix
+	this.setPerspective(this.fov, this.vp.width, this.vp.height, 0.1, 100.0);
+}
+mqRender.prototype.rayCamera = function() {
+	// apply translation to origin, any rotation and scaling
+	this.mv.identity();
+	this.mv.translate(this.translate);
+
+	// rotate model
+	var rotmat = mat4.create();
+	mat4.fromQuat(rotmat, this.rotate);
+	this.mv.multiply(rotmat);
+
+	// for a volume cube other than [0,0,0] - [1,1,1], need to translate/scale here...
+	this.mv.translate([-this.scaling[0]*0.5, -this.scaling[1]*0.5, -this.scaling[2]*0.5]);
+	// inverse of scaling
+	this.mv.scale([this.iscale[0], this.iscale[1], this.iscale[2]]);
+
+	// perspective matrix
+	this.setPerspective(this.fov, this.vp.width, this.vp.height, 0.1, 100.0);
+
+	// get inverted matrix for volume shader 
+	this.uiproject = mat4.create(this.project.m);
+	mat4.invert(this.uiproject, this.uiproject);
 }
 mqRender.prototype.draw = function() {
 	this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
@@ -249,17 +311,34 @@ mqRender.prototype.draw = function() {
 
 	// texture
 
-	//this.gl.drawArrays()
+	this.gl.drawArrays(this.glsl.drawtype, 0, this.glsl.numItems);
 
 	this.mv.pop();
 }
-
 mqRender.prototype.delayDraw = function(time, immediately) {
 	if (!immediately) this.draw();
 	// delay for render high quality render effect
 	if (this.delaytimer) clearTimeout(this.delaytimer);
 	var that = this;
 	this.delaytimer = setTimeout(function(){that.draw();}, time);
+}
+
+mqRender.prototype.rotateX = function(deg) {
+	this.rotation(deg, [1,0,0]);
+}
+mqRender.prototype.rotateY = function(deg) {
+	this.rotation(deg, [0,1,0]);
+}
+mqRender.prototype.rotateZ = function(deg) {
+	this.rotation(deg, [0,0,1]);
+}
+mqRender.prototype.rotation = function(deg, axis) {
+	// quaterion rotate
+	var rad = deg * Math.PI / 180.0;
+	var rotation = quat.create();
+	quat.setAxisAngle(rotation, axis, rad);
+	quat.normalize(rotation, rotation);
+	quat.multiply(this.rotate, rotation, this.rotate);
 }
 
 // image data
