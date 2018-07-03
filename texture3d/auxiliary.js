@@ -215,14 +215,14 @@ function mqRender(gl, options) {
 	
 	// viewport 
 	this.vp = new mqViewport(
-		//0, 0, options.width, options.height
-		0, 0, 400, 400
+		0, 0, options.width, options.height
+		//0, 0, 400, 400
 	);
 	// delayed render
 	this.delaytimer = null;
 
 	this.gl.clearColor(0, 0, 0, 0);
-	if (true) {
+	if (false) {
 		this.gl.enable(this.gl.DEPTH_TEST);
 		this.gl.depthFunc(this.gl.LEQUAL);
 	}
@@ -401,7 +401,7 @@ mqRender.prototype.DrawAxis = function() {
 }
 mqRender.prototype.draw = function() {
 	this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
-	//this.gl.viewport(this.vp.x, this.vp.y, this.vp.width, this.vp.height);
+	this.gl.viewport(this.vp.x, this.vp.y, this.vp.width, this.vp.height);
 
 	// only render current modelview
 	this.mv.push();

@@ -2,4 +2,5 @@ Splat/build/*
 Splat/cmake-build-debug/*
 Splat/cmake-build-release/*
 Splat/.idea/*
+raycast/build/*
 raycast/cmake-build-debug/*

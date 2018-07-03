@@ -357,9 +357,9 @@ void main(void)
                 
                 setTimeout( function(){
                     requestAnimationFrame(anonymousRender);
-                    // render.rotateX(degree);
-                    // render.rotateY(degree);
-                    // render.rotateZ(degree);
+                    render.rotateX(degree);
+                    render.rotateY(degree);
+                    render.rotateZ(degree);
                     degree++;
                     if (degree > 360) degree = 0;
                 }, 200);

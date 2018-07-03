@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<script id="vs" type="x-shader/x-vertex">
+#version 300 es
+in vec4 Position;
+out vec4 vPosition;
+uniform mat4 umvp;
+void main()
+{
+    gl_Position = umvp * Position;
+    vPosition = Position;
+}
+</script>
+<script id="gs" type="x-shader/x-geomtry">
+#version 300 es
+layout(points) in;
+layout(triangle_strip, max_vertices = 24) out;
+
+in vec4 vPosition[1];
+
+uniform mat4 umvp;
+uniform mat4 uproject;
+uniform mat4 uview;
+uniform mat4 umv;
+
+vec4 objCube[8]; // object space coordinate of cube corner 
+vec4 ndcCube[8]; // normalized device coordinate of cube corner 
+ivec4 faces[6]; // vertex indices of the cube faces 
+
+void emit_vert(int vert)
+{
+    gl_Position = ndcCube[vert];
+    EmitVertex();
+}
+
+void emit_face(int face) 
+{
+    emit_vert(faces[face][1]); emit_vert(faces[face][0]);
+    emit_vert(faces[face][3]); emit_vert(faces[face][2]);
+    EndPrimitive();
+}
+
+void main()
+{
+    faces[0] = ivec4(0,1,3,2); faces[1] = ivec4(5,4,6,7);
+    faces[2] = ivec4(4,5,0,1); faces[3] = ivec4(3,2,7,6);
+    faces[4] = ivec4(0,3,4,7); faces[5] = ivec4(2,1,6,5);
+
+    vec4 P = vPosition[0];
+    vec4 I = vec4(1,0,0,0);
+    vec4 J = vec4(0,1,0,0);
+    vec4 K = vec4(0,0,1,0);
+
+    objCube[0] = P+K+I+J; objCube[1] = P+K+I-J;
+    objCube[2] = P+K-I-J; objCube[3] = P+K-I+J;
+    objCube[4] = P-K+I+J; objCube[5] = P-K+I-J;
+    objCube[6] = P-K-I-J; objCube[7] = P-K-I+J;
+
+    // transform the corner of the box 
+    for (int vert=0; vert < 8; vert++)
+        ndcCube[vert] = umvp * objCube[vert];
+
+    // emit the six faces
+    for (int face=0; face < 6; face++)
+        emit_face(face);
+}
+</script>    
+<script id="fs" type="x-shader/x-fragment">
+#version 300 es
+
+out vec4 FragColor;
+
+uniform sampler3D Density;
+uniform vec3 LightPosition = vec3(0.25, 1.0, 3.0);
+uniform vec3 LightIntensity = vec3(15.0);
+uniform float Absorption = 1.0;
+uniform mat4 umv;
+uniform float FocalLength;
+uniform vec2 WindowSize;
+uniform vec3 RayOrigin;
+
+const float maxDist = sqrt(2.0);
+const int numSamples = 128;
+const float stepSize = maxDist / float(numSamples);
+const int numLightSamples = 32;
+const float lscale = maxDist / float(numLightSamples);
+const float densityFactor = 5.0;
+
+struct Ray {
+    vec4 Origin;
+    vec3 Dir;
+}
+
+struct AABB {
+    vec3 Min;
+    vec3 Max;
+}
+
+bool IntersectBox(Ray r, AABB aabb, out float t0, out float t1)
+{
+    vec3 invR = 1.0 / r.Dir;
+    vec3 tbot = invR * (aabb.Min - r.Origin);
+    vec3 ttop = invR * (aabb.Max - r.Origin);
+    vec3 tmin = min(ttop, tbot);
+    vec3 tmax = max(ttop, tbot);
+    vec2 t = max(tmin.xx, tmin.yz);
+    t0 = max(t.x, t.y);
+    t = min(tmax.xx, tmax.yz);
+    t1 = min(t.x, t.y);
+    return t0 <= t1;
+}
+
+void main()
+{
+    vec3 rayDirection;
+    rayDirection.xy = 2.0 * gl_FragCoord.xy / WindowSize - 1.0;
+    rayDirection.z = -FocalLength;
+    rayDirection = (vec4(rayDirection, 0) * umv).xyz;
+
+    Ray eye = Ray(RayOrigin, normalize(rayDirection));
+    AABB aabb = AABB(vec3(-1.0), vec3(1.0));
+
+    float tnear, tfar;
+    IntersectBox(eye, aabb, tnear, tfar);
+
+    vec3 rayStart = eye.Origin + eye.Dir * tnear;
+    vec3 rayStop = eye.Origin + eye.Dir * tfar;
+    rayStart = 0.5 * (rayStart + 1.0);
+    rayStop = 0.5 * (rayStop + 1.0);
+
+    vec3 pos = rayStart;
+    vec3 step = normalize(rayStop - rayStart) * stepSize;
+    float travel = distance(rayStop, rayStart);
+    float T = 1.0;
+    vec3 Lo = vec3(0.0);
+
+    for (int i=0; i < numSamples && travel > 0.0; ++i, pos += step, travel -= stepSize) {
+        
+        float density = texture(Density, pos).x * densityFactor;
+        if (density <= 0.0);
+            conttinue;
+        
+            T *= 1.0 - density*stepSize*Absorption;
+        if (T <= 0.01)
+            break;
+        
+        vec3 lightDir = normalize(LightPosition - pos) * lscale;
+        float T1 = 1.0;
+        vec3 lpos = pos + lightDir;
+
+        for (int s=0; s < numLightSamples; ++s) {
+            float ld = texture(Density, lpos).x;
+            T1 *= 1.0 - Absorption * stepSize * ld;
+            if (T1 <= 0.01)
+                lpos += lightDir;
+        }
+
+        vec3 Li = LightIntensity * T1;
+        Lo += Li * T * density * stepSize;
+    }
+
+    FragColor.rgb = Lo;
+    FragColor.a = 1 - T;
+}
+</script>
+</head>
+<body>
+    <canvas id="demo" width="400" height="400"></canvas>
+    <script src="./perlin.js"></script>
+    <script src="./gl-matrix.js"></script>
+    <script>
+        // http://prideout.net/blog/?p=64
+
+        function getShaderSource(id) {
+            return document.getElementById(id).textContent.replace(/^\s+|\s+$/g, '');
+        }
+
+        function createShader(gl, source, type) {
+            var shader = gl.createShader(type);
+            gl.shaderSource(shader, source);
+            gl.compileShader(shader);
+            var log = gl.getShaderInfoLog(shader);
+            if (log) {
+                console.log(log);
+            }
+            return shader;
+        }
+
+        function createProgram(gl, vs, gs, fs) {
+            var program = gl.createProgram();
+            gl.attachShader(program, vs); gl.deleteShader(vs);
+            gl.attachShader(program, gs); gl.deleteShader(gs);
+            gl.attachShader(program, fs); gl.deleteShader(fs);
+            gl.linkProgram(program);
+            var log = gl.getProgramInfoLog(program);
+            if (log) {
+                console.log(log);
+            }
+            console.log(program);
+            return program;            
+        }
+
+
+        //let canvas = document.createElement( 'canvas' )
+        let canvas = document.getElementById('demo');
+        let gl = canvas.getContext( 'webgl2', { antialias: true } )
+        if( gl == null ) { alert( 'requires webgl2 support!' ) }
+    
+        let vs = createShader(gl, getShaderSource('vs'), gl.VERTEX_SHADER);
+        let gs = createShader(gl, getShaderSource('gs'), gl.GEOMETRY_SHADER);
+        let fs = createShader(gl, getShaderSource('fs'), gl.FRAGMENT_SHADER);
+        let program = createProgram(gl, vs, fs);
+
+        // cube center point buffer
+        var cubevbo = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, cubevbo);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0,0,0]), gl.STATIC_DRAW);
+        gl.bindBuffer(gl.ARRAY_BUFFER, null);
+
+        var texVolume = createPyroclasticVolume(128, 0.025);
+
+        var FieldOfView = 0.7;
+        var near = 1.0;
+        var far = 100.0;
+
+        var umvp = mat4.create();
+        var uproject = mat4.create();
+        var uview = mat4.create();
+        var umv = mat4.create();
+        var eye = vec3.fromValues(0, 0, 5);
+        var center = vec3.fromValues(0, 0, 0);
+        var up = vec3.fromValues(0, 1, 0);
+
+        function updateMatrix(ms) {
+
+            mat4.targetTo(uview, eye, center, up);
+
+            var modelMatrix = mat4.create();
+
+            mat4.multiply(umv, uview, modelMatrix);
+
+            mat4.perspectiveFromFieldOfView(uproject, FieldOfView, near, far);
+
+            mat4.multiply(umvp, uproject, umv);
+        }
+
+        var locData = [];
+        function bindLocation(uniforms) {
+            uniforms.forEach(function(name) {
+                locData[name] = gl.getUniformLocation(program, name);
+            })
+        }
+        function getLocation(name) {
+            if(!locData.hasOwnProperty(name)) 
+                throw "no such attribute name : " + name;
+            return locData[name];
+        }
+        
+        bindLocation([
+            'umvp', 'uproject', 'uview', 'umv',
+            'RayOrigin', 'FocalLength', 'WindowSize'
+        ]);
+        
+        var pn = new Perlin('3d-noise');
+        function PerlinNoise3D(x, y, z, alpha, beta, n) {
+            let sum=0;
+            let p=[x,y,z];
+            let scale=1;
+            for (var i=0; i<n; i++) {
+                let val = pn.noise(p[0], p[1], p[2]);
+                sum += val / scale;
+                scale *= alpha;
+                p[0] *= beta;
+                p[1] *= beta;
+                p[2] *= beta;
+            }
+            return sum;
+        }
+
+        function createPyroclasticVolume(n, r) {
+            var tex3d = gl.createTexture();
+            gl.bindTexture(gl.TEXTURE_3D, tex3d);
+            gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+            gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+            gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+            gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+            gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_R, gl.CLAMP_TO_EDGE);
+            gl.PixelStorei(gl.UNPACK_ALIGMENT, 1);
+
+            var data = new Uint8Array(n*n*n);
+            var pixel = 0;
+
+            var frequency = 3.0 / n;
+            var center = n / 2.0 + 0.5;
+            for (var x=0; x<n; ++x) {
+                for (var y=0; y<n; ++y) {
+                    for (var z=0; z<n; ++z) {
+                        var dx = center - x;
+                        var dy = center - y;
+                        var dz = center - z;
+
+                        var off = Math.abs(PerlinNoise3D(
+                            x*frequency,
+                            y*frequency,
+                            z*frequency,
+                            5, 6, 3
+                        ));
+
+                        var d = Math.sqrt(dx*dx+dy*dy+dz*dz) / n;
+                        var isFilled = (d - off) < r;
+                        data[pixel++] = isFilled ? 255 : 0;
+                    }
+                }
+            }
+
+            gl.texImage3D(
+                gl.TEXTURE_3D, 
+                0, 
+                gl.LUMINANCE,
+                n,
+                n, 
+                n, 
+                0,
+                gl.LUMINANCE,
+                data
+            );
+
+            return tex3d;
+        }
+
+        function work_render(totalFrame) {   
+            
+            gl.bindBuffer(gl.ARRAY_BUFFER, cubevbo);
+            gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+            gl.enableVertexAttribArray(0);
+
+            gl.bindTexture(gl.TEXTURE_3D, texVolume);
+
+            gl.clearColor(1.0, 1.0, 1.0, 1.0);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+
+            gl.useProgram(program);
+
+            // set uniform
+            gl.uniformMatrix4fv(getLocation('umvp'), false, umvp);
+            gl.uniformMatrix4fv(getLocation('umv'), false, umv);
+            gl.uniformMatrix4fv(getLocation('uview'), false, uview);
+            gl.uniformMatrix4fv(getLocation('uproject'), false, uproject);
+
+            var rayOrigin = vec4.create();
+            var tmp = mat4.create();
+            mat4.transpose(tmp, umv);
+            vec4.transformMat4(rayOrigin, tmp, eye);
+            gl.uniform3fv(getLocation('RayOrigin'), new Float32Array());
+            var focalLength = 1.0 / Math.tan(FieldOfView / 2);
+            gl.uniform1f(getLocation('FocalLength'), focalLength);
+            gl.uniform2fv(getLocation('WindowSize'), new Float32Array([400, 400]));
+
+
+            gl.drawArrays(gl.POINTS, 0, 1);
+            var frame = 0;
+            (function render() {
+                frame = (frame + 1) % totalFrame;
+                
+                setTimeout( function(){
+                    requestAnimationFrame(render);
+                }, 200);
+            })();
+        }
+    
+    </script>        
+</body>
+</html>
