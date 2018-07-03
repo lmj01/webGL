@@ -49,6 +49,11 @@ uniform mat4 unormal; // normal matrix
 uniform vec4 uvp; // viewport
 uniform vec3 uResolution; 
 
+float tex3D(vec3 pos) {
+    vec3 v = texture(uvolume, pos).xyz;
+    return dot(v, v);
+}
+
 // light moves with camera
 const vec3 lightPos = vec3(0.5, 0.5, 5.0);
 const float ambient = 0.2;
@@ -82,10 +87,7 @@ vec3 isoNormal(in vec3 pos, in vec3 shift, in float density) {
     }
 
     // calculate normal 
-    float texX = texture(uvolume, shiftx).x;
-    float texY = texture(uvolume, shifty).x;
-    float texZ = texture(uvolume, shiftz).x;
-    return vec3(density) - vec3(texX, texY, texZ);
+    return vec3(density) - vec3(tex3D(shiftx), tex3D(shifty), tex3D(shiftz));
 }
 
 vec2 rayIntersectBox(vec3 rayDirection, vec3 rayOrigin) {
@@ -140,7 +142,7 @@ void main()
     float T = 1.0;
     vec3 colour = vec3(0.0);
     bool inside = false;
-    vec3 shift = uIsoSmooth / uResolution;
+    vec3 shift = 1.0 / uResolution;
     // number of samples to take along this ray before we pass out back of volume 
     float travel = distance(rayStop, rayStart) / stepSize;
     int samples = int(ceil(travel));
@@ -155,7 +157,7 @@ void main()
         if (i == samples || T < 0.01) break;
         {
             // get density 
-            float density = texture(uvolume, pos).x;
+            float density = tex3D(pos);
 
             // passed through isosurface?
             if (isoValue > uRange.x && ((!inside && density >= isoValue) || (inside && density < isoValue)))
@@ -169,7 +171,7 @@ void main()
                 for (int j=0; j<5; j++) {
                     exact = (b + a) * 0.5;
                     pos = rayDirection * exact + rayOrigin;
-                    density = texture(uvolume, pos).x;
+                    density = tex3D(pos);
                     if (density - isoValue < 0.0)
                         b = exact;
                     else 
@@ -225,7 +227,7 @@ void main()
     color = vec4(colour, 1.0 - T);
 
     // wirte depth 
-    if (false) {             
+    if (true) {             
         vec4 clip_space_pos = uproject * umv * vec4(rayStart, 1.0);
         float ndc_depth = clip_space_pos.z / clip_space_pos.w;
         float depth = (((gl_DepthRange.far - gl_DepthRange.near) * ndc_depth) +
@@ -234,28 +236,74 @@ void main()
     }
 }
 </script>
+<script id="line-vs" type="x-shader/x-vertex">
+#version 300 es
+precision highp float;
+
+layout(location = 0) in vec3 aVertexPosition;
+layout(location = 1) in vec4 aVertexColour;
+
+uniform mat4 umv;
+uniform mat4 uproject;
+
+uniform vec4 uColour;
+uniform float uAlpha;
+
+out vec4 vColour;
+
+void main(void)
+{
+    vec4 mvPosition = umv * vec4(aVertexPosition, 1.0);
+    gl_Position = uproject * mvPosition;
+    vec4 colour = aVertexColour;
+    float alpha = 1.0;
+    if (uColour.a > 0.01) colour = uColour;
+    if (uAlpha > 0.01) alpha = uAlpha;
+    vColour = vec4(colour.rgb, colour.a * alpha);
+}
+</script>
+
+<script id="line-fs" type="x-shader/x-fragment">
+#version 300 es
+precision highp float;
+
+in vec4 vColour;
+out vec4 color;
+
+void main(void)
+{
+    color = vColour;
+}
+</script>
 <style>
-    #demo {
-        border: 1px solid red;
+    button {
+        position: relative;
+        z-index: 5;
     }
+    #demo {
+        position: absolute;
+        border: 1px solid red;
+        width: 100%;
+        height: 100%;
+    }    
 </style>
 <script src="./gl-matrix.js"></script>
 <script src="./signals.js"></script>
 <script src="./auxiliary.js"></script>
 </head>
 <body>
-    <canvas id="demo" width="600" height="800"></canvas>
-    <br />
+    <canvas id="demo" ></canvas>
     <button onclick="rotateX();">rotate-x</button>
     <button onclick="rotateY();">rotate-y</button>
-    <button onclick="rotateXY();">rotate-xy</button>
+    <button onclick="rotateZ();">rotate-z</button>
+    <button onclick="rotateXY();">rotate-xy</button>   
     <script>
         let def_width = 256;
         let def_height = 256;
         let def_depth = 256;
         let def_slicex = 16;
         let def_slicey = 16;
-        let no_def = true;
+        let no_def = false;
         let width = no_def ? 400 : def_width;
         let height = no_def ? 400 : def_height;
         let depth = no_def ? 272 : def_depth;
@@ -265,23 +313,25 @@ void main()
             loadtex: new signals.Signal()
         }
         let canvas = document.getElementById('demo');
-        //canvas.width = width;
-        //canvas.height = height;
-        //canvas.style.cssText = 'width:'+width+'px;height:'+height+'px;margin:0px;';
+        // let canvasWidth = 800;
+        // let canvasHeight = 600;
+        // canvas.width = canvasWidth;
+        // canvas.height = canvasHeight;
+        // canvas.setAttribute("width", canvasWidth);
+        // canvas.setAttribute("Height", canvasHeight);
         let gl = canvas.getContext( 'webgl2', { antialias: true } )
         if( gl == null ) { alert( 'requires webgl2 support!' ) }
 
-        var render = new mqRender(gl, width, height, depth, slicex, slicey);
-        let glsl = new mqShader();
-        glsl.vs = glsl.createShader(gl, glsl.getCodeFromElement('vs'), gl.VERTEX_SHADER);
-        glsl.fs = glsl.createShader(gl, glsl.getCodeFromElement('fs'), gl.FRAGMENT_SHADER);
-        glsl.program = glsl.createProgram(gl, glsl.vs, glsl.fs);
-        let attrArray = ['position', 'texcoord'];
-        let uniformArray = ['uvolume', 'umv','uproject', 'uiproject', 'unormal', 'uvp', 'uResolution'];
-        glsl.bindLocation(gl, attrArray, uniformArray);
-                
-        glsl.createVAO(gl, 'position', 'texcoord');
-        render.glsl = glsl;
+        var render = new mqRender(gl, {
+            width: canvas.width, 
+            height: canvas.height,
+            dimx: width,
+            dimy: height,
+            dimz: depth,
+            slicex: slicex, 
+            slicey: slicey,
+        });
+        var glsl = render.glsl;
         myevent.loadtex.add(work_render);
 
         if (no_def) {
@@ -298,40 +348,18 @@ void main()
                 
         function work_render(totalFrame) {  
             
-            gl.useProgram(glsl.program);
-            gl.bindVertexArray(glsl.vao);
-
-            gl.activeTexture(gl.TEXTURE0);
-            gl.bindTexture(gl.TEXTURE_2D_ARRAY, render.texVolume);
+            render.initDrawVolume();
             
-            render.rayCamera();
-            render.updateMatrix();
-
-            gl.uniform1i(glsl.getUniformLoc('uvolume'), 0);
-            gl.uniformMatrix4fv(glsl.getUniformLoc('uiproject'), false, render.uiproject);            
-            gl.uniform4fv(glsl.getUniformLoc('uvp'), new Float32Array([0, 0, width, height]));
-            gl.uniform3fv(glsl.getUniformLoc('uResolution'), new Float32Array([width,height,depth]));
-
             var degree = 0;
             (function anonymousRender() {
-                // -- Render
-                gl.clearColor(1.0, 1.0, 1.0, 1.0);
-                gl.clear(gl.COLOR_BUFFER_BIT);
-                gl.viewport(render.vp.x, render.vp.y, render.vp.width, render.vp.height);
-
-                render.mv.push();
                 
-                render.rayCamera();
-                render.updateMatrix();
-                gl.uniformMatrix4fv(glsl.getUniformLoc('uiproject'), false, render.uiproject);                
-                gl.drawArrays(glsl.drawtype, 0, glsl.numItems);
+                render.draw();
                 
-                render.mv.pop();
-
                 setTimeout( function(){
                     requestAnimationFrame(anonymousRender);
-                    //render.rotateX(degree);
-                    render.rotateY(degree);
+                    // render.rotateX(degree);
+                    // render.rotateY(degree);
+                    // render.rotateZ(degree);
                     degree++;
                     if (degree > 360) degree = 0;
                 }, 200);
@@ -339,14 +367,17 @@ void main()
         }
 
         function rotateX() {
-            render.rotateX(30);
+            render.rotateX(10);
         }
         function rotateY() {
-            render.rotateY(30);
+            render.rotateY(10);
         }
         function rotateXY() {
-            render.rotateX(30);
-            render.rotateY(30);
+            render.rotateX(10);
+            render.rotateY(10);
+        }
+        function rotateZ() {
+            render.rotateZ(10);
         }
     
     </script>        

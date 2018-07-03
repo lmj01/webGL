@@ -7,13 +7,8 @@ function mqShader() {
 	this.vs = null;
 	this.fs = null;
 	this.vao = null;
-	this.posbuffer = null;
-	this.texbuffer = null;
-	this.itemSize = null;
-	this.numItems = null;
-	this.posloc = null; // same as glsl layout qualifier
-	this.texloc = null;
 	this.drawtype = null;
+	this.drawcount = null;
 	this.uniformloc = []; // uniform name for location
 	this.attrloc = []; // attributes location
 }
@@ -69,39 +64,66 @@ mqShader.prototype.getUniformLoc = function(name) {
 		throw "no such uniform name : " + name;
 	return this.uniformloc[name];
 }
-mqShader.prototype.createVAO = function(gl, npos, ntex) {
+mqShader.prototype.createVAO = function(gl, options) {
 	this.vao = gl.createVertexArray();
 	gl.bindVertexArray(this.vao);
 
-	var positionData = 
-		//new Float32Array([1.0,1.0, -1.0,1.0, 1.0,-1.0, -1.0,-1.0]);
-		new Float32Array([-1.0,-1.0, 1.0,-1.0, 1.0,1.0, 1.0,1.0, -1.0,1.0, -1.0,-1.0]);
-	this.posbuffer = this.bufferData(gl, positionData, gl.STATIC_DRAW);
+	this.drawtype = options.type;
+	this.drawcount = 6;
 
-	var texcoordData = 
-		//new Float32Array([1.0,1.0, 0.0,1.0, 1.0,0.0, 0.0,0.0]);
-		new Float32Array([0.0,1.0, 1.0,1.0, 1.0,0.0, 1.0,0.0, 0.0,0.0, 0.0,1.0]);
-	this.texbuffer = this.bufferData(gl, texcoordData, gl.STATIC_DRAW);
-	this.drawtype = 
-		gl.TRIANGLES;
-		//gl.TRIANGLE_STRIP;
-	this.itemSize = 2;
-	this.numItems = 6;//4;
-
-	// same as in glsl layout qualifier
-	this.posloc = 0;
-	this.texloc = 1;
-	gl.enableVertexAttribArray(this.posloc);
-	gl.bindBuffer(gl.ARRAY_BUFFER, this.posbuffer);
-	gl.vertexAttribPointer(this.posloc, this.itemSize, gl.FLOAT, false, 0, 0);
-	gl.bindBuffer(gl.ARRAY_BUFFER, null);
-/*
-	gl.enableVertexAttribArray(this.texloc);
-	gl.bindBuffer(gl.ARRAY_BUFFER, this.texbuffer);
-	gl.vertexAttribPointer(this.texloc, this.itemSize, gl.FLOAT,false, 0, 0);
-	gl.bindBuffer(gl.ARRAY_BUFFER, null);
-*/
+	var that = this;
+	options.object.forEach(function(obj){
+		if (obj.enable) {
+			that.attrloc[obj.name] = obj.loc;
+			let buffer = that.bufferData(gl, obj.data, gl.STATIC_DRAW);
+			gl.enableVertexAttribArray(obj.loc);
+			gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+			gl.vertexAttribPointer(obj.loc, obj.size, gl.FLOAT, false, 0, 0);
+			gl.bindBuffer(gl.ARRAY_BUFFER, null);	
+		}
+	});
 	gl.bindVertexArray(null);	
+}
+
+/**
+ * 工具
+ */
+function mqUtil() {
+}
+mqUtil.prototype.vaoCube = function() {
+	var vao = gl.createVertexArray();
+	gl.bindVertexArray(this.vao);
+
+	var positionData = new Float32Array([
+		-1.0, -1.0, -1.0,  -1.0, -1.0, 1.0,
+		-1.0, 1.0, -1.0,  -1.0, 1.0, 1.0, 
+		1.0, -1.0, -1.0,  1.0, -1.0, 1.0, 
+		1.0, 1.0, -1.0,  1.0, 1.0,1.0
+	]);
+	var indices = new Uint16Array([
+		7, 3, 1, 1, 5, 7, // Z+
+        0, 2, 6, 6, 4, 0, // Z-
+        6, 2, 3, 3, 7, 6, // Y+
+        1, 0, 4, 4, 5, 1, // Y-
+        3, 2, 0, 0, 1, 3, // X-
+        4, 6, 7, 7, 5, 4, // X+
+	]);
+
+	var posVbo = gl.createBuffer();
+	gl.bindBuffer(gl.ARRAY_BUFFER ,posVbo);
+	gl.bufferData(gl.ARRAY_BUFFER, positionData, gl.STATIC_DRAW);
+	gl.bindBuffer(null);
+
+	var idxVbo = gl.createBuffer();
+	gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, idxVbo);
+	gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
+	gl.bindBuffer(null);
+
+	gl.enableVertexAttribArray(0);
+	gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+
+	gl.bindVertexArray(null);
+	return vao;
 }
 
 /**
@@ -152,57 +174,117 @@ function mqViewport(x, y, width, height) {
 	this.width = width;
 	this.height = height;
 }
-
+mqViewport.prototype.toArray = function() {
+	return [this.x, this.y, this.width, this.height];
+}
 /**
  * render
  */
-function mqRender(gl, width, height, depth, slicex, slicey) {
+function mqRender(gl, options) {
 	this.gl = gl;
 
-	this.translate = [0,0,0];
+	this.width = options.width;
+	this.height = options.height;
 	this.rotate = quat.create();
 	quat.identity(this.rotate);
-	this.focus = [0,0,0];
-	this.center = [0, 0, 0];
-	this.scale = [1, 1, 1];
-	this.orientation = 1.0; // 1.0f for RH, -1.0 for LH
 	this.fov = 45.0;
-	this.focalLength = 1.0 / Math.tan(0.5 * this.fov * Math.PI / 180.0);
-	this.resolution = [width, height, depth];
-	this.res = [width, height, depth];
-	this.dims = [1.0, 1.0, 1.0];
-	this.scaling = this.dims;
-	this.tiles = [slicex, slicey];
-	this.iscale = [1.0 / this.scaling[0], 1.0 / this.scaling[1], 1.0 / this.scaling[2]];
-	this.center = [0.5 * this.scaling[0], 0.5 * this.scaling[2], 0.5 * this.scaling[2]];
-	this.focus = this.center;
-	
+	this.near = 0.1;
+	this.far = 100.0;
+	this.resolution = [options.dimx, options.dimy, options.dimz];
+
 	this.mv = new mqMatrix();
 	this.project = new mqMatrix();
-	this.program = null;
+	this.iproject = null; // inverse projection
+	this.mnormal = null; // normal 
+	
 	// texture
 	this.texVolume = this.gl.createTexture();
 	// shader
-	this.glsl = null;
-	// uniform matrix variables
-	this.umv = null;	// modelview
-	this.uproject = null; // projection
-	this.uiproject = null; // inverse projection
-	this.unormal = null; // normal 
+	this.glsl = new mqShader();
+    this.glsl.vs = this.glsl.createShader(gl, this.glsl.getCodeFromElement('vs'), gl.VERTEX_SHADER);
+    this.glsl.fs = this.glsl.createShader(gl, this.glsl.getCodeFromElement('fs'), gl.FRAGMENT_SHADER);
+    this.glsl.program = this.glsl.createProgram(gl, this.glsl.vs, this.glsl.fs);
+	this.initVolumeShader();
+	
+	// auxililary scene object 
+	this.lineglsl = new mqShader();
+	this.lineglsl.vs = this.lineglsl.createShader(gl, this.lineglsl.getCodeFromElement('line-vs'), gl.VERTEX_SHADER);
+	this.lineglsl.fs = this.lineglsl.createShader(gl, this.lineglsl.getCodeFromElement('line-fs'), gl.FRAGMENT_SHADER);
+	this.lineglsl.program = this.lineglsl.createProgram(gl, this.lineglsl.vs, this.lineglsl.fs);
+	this.initLineShader();
+	
 	// viewport 
-	this.vp = new mqViewport(0, 0, width, height);
+	this.vp = new mqViewport(
+		//0, 0, options.width, options.height
+		0, 0, 400, 400
+	);
 	// delayed render
 	this.delaytimer = null;
 
+	this.gl.clearColor(0, 0, 0, 0);
 	if (true) {
 		this.gl.enable(this.gl.DEPTH_TEST);
 		this.gl.depthFunc(this.gl.LEQUAL);
 	}
-	if (true) {
-		this.gl.clearColor(0, 0, 0, 0);
+	if (true) {		
 		this.gl.enable(this.gl.BLEND);
 		this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
 	}
+}
+mqRender.prototype.initVolumeShader = function() {
+	let options = {
+		type: 
+			gl.TRIANGLES,
+			//gl.TRIANGLE_STRIP,
+		count: 
+			//4,
+			6,
+		object:	[
+			{
+				name: 'position',
+				enable: true,
+				loc: 0,
+				size: 2,
+				data: 
+					//new Float32Array([1.0,1.0, -1.0,1.0, 1.0,-1.0, -1.0,-1.0]),
+					new Float32Array([-1.0,-1.0, 1.0,-1.0, 1.0,1.0, 1.0,1.0, -1.0,1.0, -1.0,-1.0]),				
+			}, {
+				name: 'texcoord',
+				enable: false,
+				loc: 1,
+				size: 2,
+				data: 
+					//new Float32Array([1.0,1.0, 0.0,1.0, 1.0,0.0, 0.0,0.0]),
+					new Float32Array([0.0,1.0, 1.0,1.0, 1.0,0.0, 1.0,0.0, 0.0,0.0, 0.0,1.0]),
+			}
+		]
+	};
+    this.glsl.createVAO(this.gl, options);
+	this.glsl.bindLocation(
+		this.gl, 
+		[options.object[0].name, options.object[1].name], 
+		['uvolume', 'umv','uproject', 'uiproject', 'unormal', 'uvp', 'uResolution']
+	);	
+}
+mqRender.prototype.initLineShader = function() {
+	var vertexPositions = [-1.0,  0.0,  0.0,
+		1.0,  0.0,  0.0,
+		0.0, -1.0,  0.0, 
+		0.0,  1.0,  0.0, 
+		0.0,  0.0, -1.0, 
+		0.0,  0.0,  1.0];
+	var vertexColours =  [1.0, 0.0, 0.0, 1.0,
+		1.0, 0.0, 0.0, 1.0,
+		0.0, 1.0, 0.0, 1.0,
+		0.0, 1.0, 0.0, 1.0,
+		0.0, 0.0, 1.0, 1.0,
+		0.0, 0.0, 1.0, 1.0];
+	this.lineglsl.posbuffer = this.lineglsl.bufferData(this.gl, new Float32Array(vertexPositions), gl.STATIC_DRAW);
+	this.lineglsl.colourbuf = this.lineglsl.bufferData(this.gl, new Float32Array(vertexColours), gl.STATIC_DRAW);
+	this.lineglsl.bindLocation(this.gl, 
+		[],
+		['umv', 'uproject', 'uColour', 'uAlpha']
+	);
 }
 mqRender.prototype.loadTextureArray = function(img, size, numx, numy) {
 	var canvas = document.createElement('canvas');
@@ -253,67 +335,89 @@ mqRender.prototype.updateMatrix = function() {
 mqRender.prototype.camera = function() {
 	// apply translation to origin, any rotation and scaling
 	this.mv.identity();
-	this.mv.translate(this.translate);
-	// adjust center of rotation, default is same as focal point so this does nothing
-	adjust = [-(this.focus[0] - this.center[0]), -(this.focus[1]-this.center[1]), -(this.focus[2] - this.center[2])];
-	this.mv.translate(adjust);
 
 	// rotate model
 	var rotmat = mat4.create();
 	mat4.fromQuat(rotmat, this.rotate);
 	this.mv.multiply(rotmat);
-
-	// adjust back for rotation center
-	adjust.forEach(function(element){
-		element *= element * -1;
-	})
-	//adjust = [this.focus[0] - this.center[0], this.focus[1] - this.center[1], this.focus[2] - this.center[2]];
-	this.mv.translate(adjust);
-
-	// tanslate back by center of model to align eye with model center
-	this.mv.translate([-this.focus[0], -this.focus[1], -this.focus[2] * this.orientation]);
-
+	
 	// perspective matrix
-	this.setPerspective(this.fov, this.vp.width, this.vp.height, 0.1, 100.0);
+	this.setPerspective(this.fov, this.width / this.height, this.near, this.far);
 }
 mqRender.prototype.rayCamera = function() {
 	// apply translation to origin, any rotation and scaling
 	this.mv.identity();
-	this.mv.translate(this.translate);
-
+	
 	// rotate model
 	var rotmat = mat4.create();
 	mat4.fromQuat(rotmat, this.rotate);
 	this.mv.multiply(rotmat);
 
-	// for a volume cube other than [0,0,0] - [1,1,1], need to translate/scale here...
-	this.mv.translate([-this.scaling[0]*0.5, -this.scaling[1]*0.5, -this.scaling[2]*0.5]);
-	// inverse of scaling
-	this.mv.scale([this.iscale[0], this.iscale[1], this.iscale[2]]);
-
 	// perspective matrix
-	this.setPerspective(this.fov, this.vp.width, this.vp.height, 0.1, 100.0);
+	this.setPerspective(this.fov, this.width / this.height, this.near, this.far);
 
 	// get inverted matrix for volume shader 
-	this.uiproject = mat4.create(this.project.m);
-	mat4.invert(this.uiproject, this.uiproject);
+	this.iproject = mat4.create(this.project.m);
+	mat4.invert(this.iproject, this.iproject);
+}
+mqRender.prototype.initDrawVolume = function() {
+	
+	this.gl.useProgram(this.glsl.program);
+	this.gl.bindVertexArray(this.glsl.vao);
+
+	this.gl.activeTexture(this.gl.TEXTURE0);
+	this.gl.bindTexture(this.gl.TEXTURE_2D_ARRAY, this.texVolume);
+	
+	this.rayCamera();
+	this.updateMatrix();
+
+	this.gl.uniform1i(this.glsl.getUniformLoc('uvolume'), 0);
+	this.gl.uniformMatrix4fv(this.glsl.getUniformLoc('uiproject'), false, this.iproject);            
+	this.gl.uniform4fv(this.glsl.getUniformLoc('uvp'), new Float32Array(this.vp.toArray()));
+	this.gl.uniform3fv(this.glsl.getUniformLoc('uResolution'), new Float32Array(this.resolution));
+
+}
+mqRender.prototype.DrawAxis = function() {
+	
+	this.camera();
+	this.gl.useProgram(this.lineglsl.program);
+
+	this.gl.uniformMatrix4fv(this.lineglsl.getUniformLoc('umv'), false, this.mv.m);
+	this.gl.uniformMatrix4fv(this.lineglsl.getUniformLoc('uproject'), false, this.project.m);
+	this.gl.uniform1f(this.lineglsl.getUniformLoc('uAlpha'), 0.5);
+	this.gl.uniform4fv(this.lineglsl.getUniformLoc('uColour'), new Float32Array([1.0, 1.0, 1.0, 0.0]));
+	
+	this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.lineglsl.posbuffer);
+	this.gl.enableVertexAttribArray(0);
+	this.gl.vertexAttribPointer(0, 3, this.gl.FLOAT, false, 0, 0);
+
+	this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.lineglsl.colourbuf);
+	this.gl.enableVertexAttribArray(1);
+	this.gl.vertexAttribPointer(1, 4, this.gl.FLOAT, false, 0, 0);
+
+	this.gl.bindBuffer(this.gl.ARRAY_BUFFER, null);
+
+	this.gl.drawArrays(this.gl.LINES, 0, 6);
 }
 mqRender.prototype.draw = function() {
 	this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
-	this.gl.viewport(this.vp.x, this.vp.y, this.vp.width, this.vp.height);
+	//this.gl.viewport(this.vp.x, this.vp.y, this.vp.width, this.vp.height);
 
 	// only render current modelview
 	this.mv.push();
+	this.gl.useProgram(this.glsl.program);
 
 	this.rayCamera();
 
-	this.gl.useProgram(this.program);
+	this.updateMatrix();
 
-	// texture
+	this.gl.uniformMatrix4fv(this.glsl.getUniformLoc('uiproject'), false, this.iproject);
 
-	this.gl.drawArrays(this.glsl.drawtype, 0, this.glsl.numItems);
+	this.gl.drawArrays(this.glsl.drawtype, 0, this.glsl.drawcount);
 
 	this.mv.pop();
+
+	this.DrawAxis();
 }
 mqRender.prototype.delayDraw = function(time, immediately) {
 	if (!immediately) this.draw();

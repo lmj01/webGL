@@ -111,7 +111,7 @@ void PezRender(GLuint windowFbo)
     glDisable(GL_BLEND);
 
     // Draw the cube:
-    if (true) {
+    if (false) {
         BindProgram(WireframeProgram);
         glBindVertexArray(CubeVao);
         glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_SHORT, 0);
