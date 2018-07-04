@@ -283,8 +283,6 @@ void main(void)
     #demo {
         position: absolute;
         border: 1px solid red;
-        width: 100%;
-        height: 100%;
     }    
 </style>
 <script src="./gl-matrix.js"></script>
@@ -303,7 +301,7 @@ void main(void)
         let def_depth = 256;
         let def_slicex = 16;
         let def_slicey = 16;
-        let no_def = false;
+        let no_def = true;
         let width = no_def ? 400 : def_width;
         let height = no_def ? 400 : def_height;
         let depth = no_def ? 272 : def_depth;

@@ -185,9 +185,18 @@ function mqRender(gl, options) {
 
 	this.width = options.width;
 	this.height = options.height;
+	this.translate = [0,0,5];
 	this.rotate = quat.create();
+	this.scale = [1,1,1];
+	this.scaling = this.scale;
+	this.resolution = [options.dimx, options.dimy, options.dimz];
+	this.orientation = 1.0; // 1.0 for RH, -1.0 for LH
 	quat.identity(this.rotate);
 	this.fov = 45.0;
+	this.focalLength = 1.0 / Math.tan(0.5 * this.fov * Math.PI / 180);
+	this.iscale = [1.0 / this.scale[0], 1.0 / this.scale[1], 1.0 / this.scale[2]];
+	this.center = [0.5 * this.scale[0], 0.5 * this.scale[1], 1.0 / this.scale[2]];
+	this.focus = this.center;
 	this.near = 0.1;
 	this.far = 100.0;
 	this.resolution = [options.dimx, options.dimy, options.dimz];
@@ -222,7 +231,7 @@ function mqRender(gl, options) {
 	this.delaytimer = null;
 
 	this.gl.clearColor(0, 0, 0, 0);
-	if (false) {
+	if (true) {
 		this.gl.enable(this.gl.DEPTH_TEST);
 		this.gl.depthFunc(this.gl.LEQUAL);
 	}
@@ -335,11 +344,23 @@ mqRender.prototype.updateMatrix = function() {
 mqRender.prototype.camera = function() {
 	// apply translation to origin, any rotation and scaling
 	this.mv.identity();
+	this.mv.translate(this.translate);
+
+	// Adjust centre of rotation, default is same as focal point so this does nothing...
+	adjust = [-(this.focus[0] - this.center[0]), -(this.focus[1] - this.center[1]), -(this.focus[2] - this.center[2])];
+	this.mv.translate(adjust);
 
 	// rotate model
 	var rotmat = mat4.create();
 	mat4.fromQuat(rotmat, this.rotate);
 	this.mv.multiply(rotmat);
+
+	// Adjust back for rotation centre
+	adjust = [this.focus[0] - this.center[0], this.focus[1] - this.center[1], this.focus[2] - this.center[2]];
+	this.mv.translate(adjust);
+
+	// Translate back by centre of model to align eye with model centre
+	this.mv.translate([-this.focus[0], -this.focus[1], -this.focus[2] * this.orientation]);
 	
 	// perspective matrix
 	this.setPerspective(this.fov, this.width / this.height, this.near, this.far);
@@ -347,11 +368,17 @@ mqRender.prototype.camera = function() {
 mqRender.prototype.rayCamera = function() {
 	// apply translation to origin, any rotation and scaling
 	this.mv.identity();
-	
+	this.mv.translate(this.translate);
+
 	// rotate model
 	var rotmat = mat4.create();
 	mat4.fromQuat(rotmat, this.rotate);
 	this.mv.multiply(rotmat);
+
+	//For a volume cube other than [0,0,0] - [1,1,1], need to translate/scale here...
+	this.mv.translate([-this.scaling[0]*0.5, -this.scaling[1]*0.5, -this.scaling[2]*0.5]);  //Translate to origin
+	//Inverse of scaling
+	this.mv.scale([this.iscale[0], this.iscale[1], this.iscale[2]]);
 
 	// perspective matrix
 	this.setPerspective(this.fov, this.width / this.height, this.near, this.far);

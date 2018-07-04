@@ -4,16 +4,21 @@
 <meta charset="UTF-8">
 <script id="vs" type="x-shader/x-vertex">
 #version 300 es
-in vec4 Position;
+precision highp float;
+
+layout(location = 0) in vec3 Position;
+layout(location = 1) in vec4 Colour;
 out vec4 vPosition;
+out vec4 vColor;
 uniform mat4 umvp;
 void main()
 {
-    gl_Position = umvp * Position;
-    vPosition = Position;
+    gl_Position = umvp * vec4(Position, 0.0);
+    vPosition = vec4(Position, 0.0);
+    vColor = Colour;
 }
 </script>
-<script id="gs" type="x-shader/x-geomtry">
+<script id="gs" type="x-shader/x-vertex">
 #version 300 es
 layout(points) in;
 layout(triangle_strip, max_vertices = 24) out;
@@ -69,13 +74,17 @@ void main()
 </script>    
 <script id="fs" type="x-shader/x-fragment">
 #version 300 es
+precision highp float;
+precision highp int;
+precision highp sampler3D;
 
 out vec4 FragColor;
+in vec4 vColor;
 
 uniform sampler3D Density;
-uniform vec3 LightPosition = vec3(0.25, 1.0, 3.0);
-uniform vec3 LightIntensity = vec3(15.0);
-uniform float Absorption = 1.0;
+const vec3 LightPosition = vec3(0.25, 1.0, 3.0);
+const vec3 LightIntensity = vec3(15.0);
+const float Absorption = 1.0;
 uniform mat4 umv;
 uniform float FocalLength;
 uniform vec2 WindowSize;
@@ -88,21 +97,11 @@ const int numLightSamples = 32;
 const float lscale = maxDist / float(numLightSamples);
 const float densityFactor = 5.0;
 
-struct Ray {
-    vec4 Origin;
-    vec3 Dir;
-}
-
-struct AABB {
-    vec3 Min;
-    vec3 Max;
-}
-
-bool IntersectBox(Ray r, AABB aabb, out float t0, out float t1)
+bool IntersectBox(vec3 rOrigin, vec3 rDir, vec3 aabbMin, vec3 aabbMax, out float t0, out float t1)
 {
-    vec3 invR = 1.0 / r.Dir;
-    vec3 tbot = invR * (aabb.Min - r.Origin);
-    vec3 ttop = invR * (aabb.Max - r.Origin);
+    vec3 invR = 1.0 / rDir;
+    vec3 tbot = invR * (aabbMin - rOrigin);
+    vec3 ttop = invR * (aabbMax - rOrigin);
     vec3 tmin = min(ttop, tbot);
     vec3 tmax = max(ttop, tbot);
     vec2 t = max(tmin.xx, tmin.yz);
@@ -114,19 +113,23 @@ bool IntersectBox(Ray r, AABB aabb, out float t0, out float t1)
 
 void main()
 {
+    FragColor = vColor;
+    //return;
     vec3 rayDirection;
     rayDirection.xy = 2.0 * gl_FragCoord.xy / WindowSize - 1.0;
     rayDirection.z = -FocalLength;
     rayDirection = (vec4(rayDirection, 0) * umv).xyz;
 
-    Ray eye = Ray(RayOrigin, normalize(rayDirection));
-    AABB aabb = AABB(vec3(-1.0), vec3(1.0));
+    vec3 eyeRayOrigin = RayOrigin;
+    vec3 eyeRayDir = normalize(rayDirection);
+    vec3 aabbMin = vec3(-1.0);
+    vec3 aabbMax = vec3(1.0);
 
     float tnear, tfar;
-    IntersectBox(eye, aabb, tnear, tfar);
+    IntersectBox(eyeRayOrigin, eyeRayDir, aabbMin, aabbMax, tnear, tfar);
 
-    vec3 rayStart = eye.Origin + eye.Dir * tnear;
-    vec3 rayStop = eye.Origin + eye.Dir * tfar;
+    vec3 rayStart = eyeRayOrigin + eyeRayDir * tnear;
+    vec3 rayStop = eyeRayOrigin + eyeRayDir * tfar;
     rayStart = 0.5 * (rayStart + 1.0);
     rayStop = 0.5 * (rayStop + 1.0);
 
@@ -140,7 +143,7 @@ void main()
         
         float density = texture(Density, pos).x * densityFactor;
         if (density <= 0.0);
-            conttinue;
+            continue;
         
             T *= 1.0 - density*stepSize*Absorption;
         if (T <= 0.01)
@@ -162,12 +165,43 @@ void main()
     }
 
     FragColor.rgb = Lo;
-    FragColor.a = 1 - T;
+    FragColor.a = 1.0 - T;
 }
 </script>
+<script id="vs2" type="x-shader/x-vertex">
+#version 300 es
+precision highp float;
+
+uniform mat4 umvp;
+layout(location = 0) in vec3 Position;
+layout(location = 1) in vec3 Colour;
+out vec4 vColor;
+
+void main()
+{
+    gl_Position = umvp * vec4(Position, 0.0);
+    vColor = vec4(Colour, 1.0);
+}
+</script>
+<script id="fs2" type="x-shader/x-fragment">
+#version 300 es
+precision highp float;
+
+in vec4 vColor;
+out vec4 FragColor;
+void main()
+{
+    FragColor = vColor;
+}
+</script>
+<style>
+    #demo {
+        border: 1px solid red;
+    }
+</style>
 </head>
 <body>
-    <canvas id="demo" width="400" height="400"></canvas>
+    <canvas id="demo"></canvas>
     <script src="./perlin.js"></script>
     <script src="./gl-matrix.js"></script>
     <script>
@@ -188,61 +222,236 @@ void main()
             return shader;
         }
 
-        function createProgram(gl, vs, gs, fs) {
+        function createProgram(gl, vs, fs) {
             var program = gl.createProgram();
             gl.attachShader(program, vs); gl.deleteShader(vs);
-            gl.attachShader(program, gs); gl.deleteShader(gs);
             gl.attachShader(program, fs); gl.deleteShader(fs);
             gl.linkProgram(program);
             var log = gl.getProgramInfoLog(program);
             if (log) {
-                console.log(log);
+                console.log('program',log);
             }
-            console.log(program);
             return program;            
         }
 
-
-        //let canvas = document.createElement( 'canvas' )
+        var ctxwidth = 600;// window.innerWidth;
+        var ctxheight = 600; //window.innerHeight;
         let canvas = document.getElementById('demo');
+        canvas.width = ctxwidth;
+        canvas.height = ctxheight;
+        canvas.setAttribute('width', ctxwidth);
+        canvas.setAttribute('height', ctxheight);
         let gl = canvas.getContext( 'webgl2', { antialias: true } )
         if( gl == null ) { alert( 'requires webgl2 support!' ) }
     
-        let vs = createShader(gl, getShaderSource('vs'), gl.VERTEX_SHADER);
-        let gs = createShader(gl, getShaderSource('gs'), gl.GEOMETRY_SHADER);
-        let fs = createShader(gl, getShaderSource('fs'), gl.FRAGMENT_SHADER);
+        let vs = createShader(gl, getShaderSource('vs2'), gl.VERTEX_SHADER);
+        let fs = createShader(gl, getShaderSource('fs2'), gl.FRAGMENT_SHADER);
         let program = createProgram(gl, vs, fs);
 
-        // cube center point buffer
-        var cubevbo = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, cubevbo);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0,0,0]), gl.STATIC_DRAW);
-        gl.bindBuffer(gl.ARRAY_BUFFER, null);
+        function createVao() {
+                
+            // vertex position buffer 
+            var positions = new Float32Array([
+                // front face 
+                -1.0,-1.0,1.0, 1.0,-1.0,1.0, 1.0,1.0,1.0, -1.0,1.0,1.0,
+                // back face
+                -1.0,-1.0,-1.0, -1.0,1.0,-1.0, 1.0,1.0,-1.0, 1.0,-1.0,-1.0,
+                // top face
+                -1.0,1.0,-1.0, -1.0,1.0,1.0, 1.0,1.0,1.0, 1.0,1.0,-1.0,
+                // bottom face
+                -1.0,-1.0,-1.0, 1.0,-1.0,-1.0, 1.0,-1.0,1.0, -1.0,-1.0,1.0,
+                // right face
+                1.0,-1.0,-1.0, 1.0,1.0,-1.0, 1.0,1.0,1.0, 1.0,-1.0,1.0,
+                // left face
+                -1.0,-1.0,-1.0, -1.0,-1.0,1.0, -1.0,1.0,1.0, -1.0,1.0,-1.0,
+            ]);
+            var positionBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+            gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
+            //gl.bindBuffer(gl.ARRAY_BUFFER, null);
 
-        var texVolume = createPyroclasticVolume(128, 0.025);
+            // face color buffer
+            var faceColors = new Float32Array([
+                1.0, 1.0, 1.0, 1.0, // front face white
+                1.0, 0.0, 0.0, 1.0, // back face red
+                0.0, 1.0, 0.0, 1.0, // top face green
+                0.0, 0.0, 1.0, 1.0, // bottom face blue
+                1.0, 1.0, 0.0, 1.0, // right face yellow
+                1.0, 0.0, 1.0, 1.0, // left face purple
 
-        var FieldOfView = 0.7;
-        var near = 1.0;
+                1.0, 1.0, 1.0, 1.0, // front face white
+                1.0, 0.0, 0.0, 1.0, // back face red
+                0.0, 1.0, 0.0, 1.0, // top face green
+                0.0, 0.0, 1.0, 1.0, // bottom face blue
+                1.0, 1.0, 0.0, 1.0, // right face yellow
+                1.0, 0.0, 1.0, 1.0, // left face purple
+
+                1.0, 1.0, 1.0, 1.0, // front face white
+                1.0, 0.0, 0.0, 1.0, // back face red
+                0.0, 1.0, 0.0, 1.0, // top face green
+                0.0, 0.0, 1.0, 1.0, // bottom face blue
+                1.0, 1.0, 0.0, 1.0, // right face yellow
+                1.0, 0.0, 1.0, 1.0, // left face purple
+
+                1.0, 1.0, 1.0, 1.0, // front face white
+                1.0, 0.0, 0.0, 1.0, // back face red
+                0.0, 1.0, 0.0, 1.0, // top face green
+                0.0, 0.0, 1.0, 1.0, // bottom face blue
+                1.0, 1.0, 0.0, 1.0, // right face yellow
+                1.0, 0.0, 1.0, 1.0, // left face purple
+            ]);
+            var colorBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+            gl.bufferData(gl.ARRAY_BUFFER, faceColors, gl.STATIC_DRAW);
+            //gl.bindBuffer(gl.ARRAY_BUFFER, null);
+
+            // indices buffer 
+            var indicesData = [
+                0,1,2, 0,2,3, // front
+                4,5,6, 4,6,7, // back
+                8,9,10, 8,10,11, // top
+                12,13,14, 12,14,15, // bottom
+                16,17,18, 16,18,19, // right
+                20,21,22, 20,22,23, // left
+            ];
+            var idxBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, idxBuffer);
+            gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indicesData), gl.STATIC_DRAW);
+            //gl.bindBuffer(gl.ARRAY_BUFFER, null);
+            
+            // cube vao
+            //var vao = gl.createVertexArray();
+            //gl.bindVertexArray(vao);
+
+            //gl.enableVertexAttribArray(0);
+            gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+            gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+            gl.bindBuffer(gl.ARRAY_BUFFER, null);
+
+            //gl.enableVertexAttribArray(1);
+            gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+            gl.vertexAttribPointer(1, 4, gl.FLOAT, false, 0, 0);
+            gl.bindBuffer(gl.ARRAY_BUFFER, null);
+
+            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, idxBuffer);
+
+            //gl.bindVertexArray(null);
+
+            return [idxBuffer,indicesData.length];
+        }
+
+        function createTriangle() {
+            var vertices = [
+                -1,-1,-1, 1,-1,-1, 1, 1,-1, -1, 1,-1,
+                -1,-1, 1, 1,-1, 1, 1, 1, 1, -1, 1, 1,
+                -1,-1,-1, -1, 1,-1, -1, 1, 1, -1,-1, 1,
+                1,-1,-1, 1, 1,-1, 1, 1, 1, 1,-1, 1,
+                -1,-1,-1, -1,-1, 1, 1,-1, 1, 1,-1,-1,
+                -1, 1,-1, -1, 1, 1, 1, 1, 1, 1, 1,-1, 
+            ];
+
+            var colors = [
+                5,3,7, 5,3,7, 5,3,7, 5,3,7,
+                1,1,3, 1,1,3, 1,1,3, 1,1,3,
+                0,0,1, 0,0,1, 0,0,1, 0,0,1,
+                1,0,0, 1,0,0, 1,0,0, 1,0,0,
+                1,1,0, 1,1,0, 1,1,0, 1,1,0,
+                0,1,0, 0,1,0, 0,1,0, 0,1,0
+            ];
+
+            var indices = [
+                0,1,2, 0,2,3, 4,5,6, 4,6,7,
+                8,9,10, 8,10,11, 12,13,14, 12,14,15,
+                16,17,18, 16,18,19, 20,21,22, 20,22,23 
+            ];
+
+            // Create and store data into vertex buffer
+            var vertex_buffer = gl.createBuffer ();
+            gl.bindBuffer(gl.ARRAY_BUFFER, vertex_buffer);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+
+            // Create and store data into color buffer
+            var color_buffer = gl.createBuffer ();
+            gl.bindBuffer(gl.ARRAY_BUFFER, color_buffer);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+
+            // Create and store data into index buffer
+            var index_buffer = gl.createBuffer ();
+            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, index_buffer);
+            gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
+
+            return [
+                vertex_buffer, vertices.length,
+                color_buffer, colors.length,
+                index_buffer, indices.length
+            ];
+        }
+
+        var size = 128;
+        var pn = new Perlin(new Date().getTime());
+        var now = new Date().getTime();
+        //var texVolume = createPyroclasticVolume(size, 0.025);
+        console.log('get volume texture', (new Date().getTime() - now));
+        var FieldOfView = 0.78; // 45-degree
+        var near = 0.10;
         var far = 100.0;
 
+        var rotate = quat.create();
+        var degree = 0;
+        function updateRotate(deg, axis) {
+            var rad = deg * Math.PI / 180.0;
+	        var rotation = quat.create();
+	        quat.setAxisAngle(rotation, axis, rad);
+	        quat.normalize(rotation, rotation);
+	        quat.multiply(rotate, rotation, rotate);
+        }
+        function rotateX(deg) {
+	        updateRotate(deg, [1,0,0]);
+        }
+        function rotateY(deg) {
+	        updateRotate(deg, [0,1,0]);
+        }
+        function rotateZ(deg) {
+	        updateRotate(deg, [0,0,1]);
+        }
+
         var umvp = mat4.create();
+        mat4.identity(umvp);
         var uproject = mat4.create();
+        mat4.identity(uproject);
         var uview = mat4.create();
+        mat4.identity(uview);
         var umv = mat4.create();
-        var eye = vec3.fromValues(0, 0, 5);
+        mat4.identity(umv);
+        var eye = vec3.fromValues(0, 0, 1);
         var center = vec3.fromValues(0, 0, 0);
         var up = vec3.fromValues(0, 1, 0);
 
-        function updateMatrix(ms) {
+        function get_project(angle, a, zmin, zmax) {
+            var ang=  Math.tan((angle * 0.5)*Math.PI/180);
+            return [
+                0.5/ang, 0, 0, 0,
+                0, 0.5*a/ang, 0, 0,
+                0, 0, -(zmax+zmin)/(zmax-zmin), -1,
+                0, 0, (-2*zmax*zmin)/(zmax-zmin), 0
+            ];
+        }
+        function updateMatrix() {
 
             mat4.targetTo(uview, eye, center, up);
-
+            
             var modelMatrix = mat4.create();
+            mat4.identity(modelMatrix);
+
+            // rotate model
+            var rotmat = mat4.create();
+            mat4.fromQuat(rotmat, rotate);
+            mat4.multiply(modelMatrix, modelMatrix, rotmat);
 
             mat4.multiply(umv, uview, modelMatrix);
 
-            mat4.perspectiveFromFieldOfView(uproject, FieldOfView, near, far);
-
+            mat4.perspective(uproject, FieldOfView, ctxwidth/ctxheight, near, far);
+            //uproject = get_project(45.0, ctxwidth/ctxheight, near, far);
             mat4.multiply(umvp, uproject, umv);
         }
 
@@ -258,12 +467,17 @@ void main()
             return locData[name];
         }
         
+        //var vao = createVao();
+        var vao = createTriangle();
         bindLocation([
-            'umvp', 'uproject', 'uview', 'umv',
-            'RayOrigin', 'FocalLength', 'WindowSize'
+            'umvp', 
+            //'uproject', 
+            //'uview', 
+            //'umv',
+            //'RayOrigin', 'FocalLength', 'WindowSize'
         ]);
         
-        var pn = new Perlin('3d-noise');
+        
         function PerlinNoise3D(x, y, z, alpha, beta, n) {
             let sum=0;
             let p=[x,y,z];
@@ -280,15 +494,7 @@ void main()
         }
 
         function createPyroclasticVolume(n, r) {
-            var tex3d = gl.createTexture();
-            gl.bindTexture(gl.TEXTURE_3D, tex3d);
-            gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-            gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-            gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-            gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-            gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_R, gl.CLAMP_TO_EDGE);
-            gl.PixelStorei(gl.UNPACK_ALIGMENT, 1);
-
+            
             var data = new Uint8Array(n*n*n);
             var pixel = 0;
 
@@ -314,61 +520,96 @@ void main()
                     }
                 }
             }
+            var tex3d = gl.createTexture();
+            gl.bindTexture(gl.TEXTURE_3D, tex3d);
+            gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+            gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+            gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+            gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+            gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_R, gl.CLAMP_TO_EDGE);
+            gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
 
             gl.texImage3D(
                 gl.TEXTURE_3D, 
                 0, 
                 gl.LUMINANCE,
-                n,
-                n, 
-                n, 
+                n,n,n, 
                 0,
                 gl.LUMINANCE,
+                gl.UNSIGNED_BYTE,
                 data
             );
 
             return tex3d;
         }
 
-        function work_render(totalFrame) {   
+        var frame = 0;
+        var totalFrame = size * size * size;
+        function work_render() {   
+                     
+            gl.enable(gl.DEPTH_TEST);
+            gl.depthFunc(gl.LEQUAL);
+
+            gl.clearColor(0.2, 0.2, 0.2, 1.0);
             
-            gl.bindBuffer(gl.ARRAY_BUFFER, cubevbo);
-            gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
-            gl.enableVertexAttribArray(0);
+            gl.viewport(0.0, 0.0, ctxwidth, ctxheight);
+            
+            gl.clear(
+                gl.COLOR_BUFFER_BIT
+                | gl.DEPTH_BUFFER_BIT
+            );            
 
-            gl.bindTexture(gl.TEXTURE_3D, texVolume);
-
-            gl.clearColor(1.0, 1.0, 1.0, 1.0);
-            gl.clear(gl.COLOR_BUFFER_BIT);
-
+            //gl.activeTexture(gl.TEXTURE0);
+            //gl.bindTexture(gl.TEXTURE_3D, texVolume);
+            
+            if (true) {
+                gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+                gl.enableVertexAttribArray(0);
+                gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 0, 0);
+                gl.enableVertexAttribArray(1);
+            }
             gl.useProgram(program);
 
-            // set uniform
-            gl.uniformMatrix4fv(getLocation('umvp'), false, umvp);
-            gl.uniformMatrix4fv(getLocation('umv'), false, umv);
-            gl.uniformMatrix4fv(getLocation('uview'), false, uview);
-            gl.uniformMatrix4fv(getLocation('uproject'), false, uproject);
+            //updateMatrix();
 
+            // set uniform
+            gl.uniformMatrix4fv(getLocation('umvp'), true, umvp);
+            //gl.uniformMatrix4fv(getLocation('umv'), false, umv);
+            //gl.uniformMatrix4fv(getLocation('uview'), false, uview);
+            //gl.uniformMatrix4fv(getLocation('uproject'), false, uproject);
+
+/*
             var rayOrigin = vec4.create();
             var tmp = mat4.create();
+            mat4.identity(tmp);
             mat4.transpose(tmp, umv);
-            vec4.transformMat4(rayOrigin, tmp, eye);
-            gl.uniform3fv(getLocation('RayOrigin'), new Float32Array());
+            let tmpEye = vec4.create(eye);
+            vec4.set(tmpEye, eye[0], eye[1], eye[2], 1);
+            vec4.transformMat4(rayOrigin, tmpEye, tmp);
+            gl.uniform3fv(getLocation('RayOrigin'), new Float32Array([rayOrigin[0], rayOrigin[1], rayOrigin[2]]));
             var focalLength = 1.0 / Math.tan(FieldOfView / 2);
             gl.uniform1f(getLocation('FocalLength'), focalLength);
-            gl.uniform2fv(getLocation('WindowSize'), new Float32Array([400, 400]));
+            gl.uniform2fv(getLocation('WindowSize'), new Float32Array([ctxwidth, ctxheight]));
+*/
+            //gl.bindVertexArray(vao[0]);
+            //gl.drawArrays(gl.TRIANGLES, 0, 36);
+            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, vao[4]);            
+            gl.drawElements(gl.TRIANGLES, vao[5], gl.UNSIGNED_SHORT, 0);
 
+            degree++;
+            rotateX(degree);
+            rotateY(degree);
+            rotateZ(degree);
 
-            gl.drawArrays(gl.POINTS, 0, 1);
-            var frame = 0;
-            (function render() {
-                frame = (frame + 1) % totalFrame;
-                
-                setTimeout( function(){
-                    requestAnimationFrame(render);
-                }, 200);
-            })();
+            setTimeout( function(){
+                requestAnimationFrame(work_render);
+            }, 200);
+            
+            frame = (frame + 1) % totalFrame;
+            //console.log('frame:', frame);                        
         }
+        updateMatrix();
+        work_render();
     
     </script>        
 </body>
