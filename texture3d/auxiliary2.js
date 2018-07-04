@@ -197,8 +197,6 @@ function mqRender(gl, options) {
 
 	this.scale = [1,1,1];
 	this.scaling = this.scale;
-	this.resolution = [options.dimx, options.dimy, options.dimz];
-	this.orientation = 1.0; // 1.0 for RH, -1.0 for LH	
 	this.fov = 45.0;
 	this.focalLength = 1.0 / Math.tan(0.5 * this.fov * Math.PI / 180);
 	this.iscale = [1.0 / this.scale[0], 1.0 / this.scale[1], 1.0 / this.scale[2]];
@@ -206,8 +204,6 @@ function mqRender(gl, options) {
 	this.focus = this.center;
 	this.near = 1.0;
 	this.far = 1000.0;
-	this.resolution = [options.dimx, options.dimy, options.dimz];
-	this.tiles = [options.slicex, options.slicey];
 
 	this.mv = new mqMatrix();
 	this.project = new mqMatrix();
@@ -217,16 +213,7 @@ function mqRender(gl, options) {
 	this.texVolume = this.gl.createTexture();
 	// shader
 	this.util = new mqUtil();
-	this.cube = {};
-	this.cube.vs = mqCreateShader(gl, getShaderById('vs'), gl.VERTEX_SHADER);
-	this.cube.fs = mqCreateShader(gl, getShaderById('fs'), gl.FRAGMENT_SHADER);
-	this.cube.program = mqCreateProgram(gl, this.cube.vs, this.cube.fs);
-	this.cube.vao = this.util.vaoDemo(gl);
-	this.cube.loc = {};
-	['umv', 'uproject', 'uiproject', 'unormal', 'uvp', 'uresolution', 'uvolume'].forEach(function(name){
-		self.cube.loc[name] = mqLocation(gl, self.cube.program, name);
-	})
-
+	
 	this.axis = {};
 	this.axis.vs = mqCreateShader(gl, getShaderById('line-vs'), gl.VERTEX_SHADER);
 	this.axis.fs = mqCreateShader(gl, getShaderById('line-fs'), gl.FRAGMENT_SHADER);
@@ -256,37 +243,7 @@ function mqRender(gl, options) {
 	console.log('inv-project', this.iproject);
 }
 mqRender.prototype.loadTextureArray = function(img, size, numx, numy) {
-	var canvas = document.createElement('canvas');
-	canvas.width = size * numx;
-	canvas.height = size * numy;
-	var ctx = canvas.getContext('2d');
-	ctx.drawImage(img, 0, 0);
 	
-	this.gl.bindTexture(this.gl.TEXTURE_2D_ARRAY, this.texVolume);
-	this.gl.texParameteri(this.gl.TEXTURE_2D_ARRAY, this.gl.TEXTURE_BASE_LEVEL, 0);
-	this.gl.texParameteri(this.gl.TEXTURE_2D_ARRAY, this.gl.TEXTURE_MAX_LEVEL, Math.log2(size));
-	this.gl.texParameteri(this.gl.TEXTURE_2D_ARRAY, this.gl.TEXTURE_MAG_FILTER, this.gl.LINEAR);
-	this.gl.texParameteri(this.gl.TEXTURE_2D_ARRAY, this.gl.TEXTURE_MIN_FILTER, this.gl.LINEAR);
-	this.gl.texStorage3D(
-		this.gl.TEXTURE_2D_ARRAY,
-		Math.log2(size),
-		this.gl.RGBA8,
-		size, 
-		size, 
-		numx*numy
-	);
-	for (let i=0; i<numy; i++) {
-		for (let j=0; j<numx; j++) {
-			var imageData = ctx.getImageData(0+j*size, 0+i*size, size, size);
-			var pixels = new Uint8Array(imageData.data.buffer);
-			this.gl.texSubImage3D(
-				this.gl.TEXTURE_2D_ARRAY, 0, 
-				0, 0, j+i*numx,
-				size, size, 1,
-				this.gl.RGBA, this.gl.UNSIGNED_BYTE, pixels
-			);
-		}
-	}
 }
 mqRender.prototype.setPerspective = function(fovy, aspect, znear, zfar) {
 	mat4.perspective(this.project.m, fovy, aspect, znear, zfar);
@@ -304,52 +261,10 @@ mqRender.prototype.camera = function() {
 	this.mv.identity();
 	this.mv.translate(this.translate);
 
-	// Adjust centre of rotation, default is same as focal point so this does nothing...
-	adjust = [-(this.focus[0] - this.center[0]), -(this.focus[1] - this.center[1]), -(this.focus[2] - this.center[2])];
-	this.mv.translate(adjust);
-
 	// rotate model
 	var rotmat = mat4.create();
 	mat4.fromQuat(rotmat, this.rotate);
 	this.mv.multiply(rotmat);
-
-	// Adjust back for rotation centre
-	adjust = [this.focus[0] - this.center[0], this.focus[1] - this.center[1], this.focus[2] - this.center[2]];
-	this.mv.translate(adjust);
-
-	// Translate back by centre of model to align eye with model centre
-	this.mv.translate([-this.focus[0], -this.focus[1], -this.focus[2] * this.orientation]);	
-}
-mqRender.prototype.rayCamera = function() {
-	// apply translation to origin, any rotation and scaling
-	this.mv.identity();
-	this.mv.translate(this.translate);
-
-	// rotate model
-	var rotmat = mat4.create();
-	mat4.fromQuat(rotmat, this.rotate);
-	this.mv.multiply(rotmat);
-
-	//For a volume cube other than [0,0,0] - [1,1,1], need to translate/scale here...
-	//this.mv.translate([-this.scaling[0]*0.5, -this.scaling[1]*0.5, -this.scaling[2]*0.5]);  //Translate to origin
-	//Inverse of scaling
-	//this.mv.scale([this.iscale[0], this.iscale[1], this.iscale[2]]);
-}
-mqRender.prototype.initDrawVolume = function() {	
-	this.gl.bindVertexArray(this.cube.vao.vao);
-	this.gl.useProgram(this.cube.program);
-
-	this.gl.activeTexture(this.gl.TEXTURE0);
-	this.gl.bindTexture(this.gl.TEXTURE_2D_ARRAY, this.texVolume);
-	
-	this.rayCamera();
-	this.updateMatrix();
-
-	this.gl.uniform1i(this.cube.loc['uvolume'], 0);
-	this.gl.uniformMatrix4fv(this.cube.loc['uiproject'], false, this.iproject);            
-	this.gl.uniform4fv(this.cube.loc['uvp'], new Float32Array(this.vp.toArray()));
-	this.gl.uniform3fv(this.cube.loc['uresolution'], new Float32Array(this.resolution));
-
 }
 mqRender.prototype.DrawAxis = function() {
 	this.camera();
@@ -368,21 +283,6 @@ mqRender.prototype.draw = function() {
 	this.gl.viewport(this.vp.x, this.vp.y, this.vp.width, this.vp.height);
 
 	this.DrawAxis();
-/*
-	this.mv.push();
-	
-	this.gl.bindVertexArray(this.cube.vao.vao);
-	this.gl.useProgram(this.cube.program);
-	this.gl.activeTexture(this.gl.TEXTURE0);
-	this.gl.bindTexture(this.gl.TEXTURE_2D_ARRAY, this.texVolume);
-		
-	this.rayCamera();
-	this.updateMatrix();
-	this.gl.uniformMatrix4fv(this.cube.loc['uiproject'], false, this.iproject);
-	this.gl.drawArrays(this.cube.vao.type, 0, this.cube.vao.count);
-
-	this.mv.pop();
-*/
 }
 mqRender.prototype.delayDraw = function(time, immediately) {
 	if (!immediately) this.draw();
