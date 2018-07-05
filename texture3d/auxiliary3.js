@@ -73,9 +73,9 @@ mqUtil.prototype.vaoCube = function(gl) {
 	gl.bindVertexArray(null);
 	return {vao:vao, buffer:idxVbo, count:36 };
 }
-mqUtil.prototype.vaoDemo = function(gl) {
+mqUtil.prototype.vaoVolume = function(gl) {
 	var vao = gl.createVertexArray();
-	gl.bindVertexArray(this.vao);
+	gl.bindVertexArray(vao);
 
 	var positions = new Float32Array([-1.0,-1.0, 1.0,-1.0, 1.0,1.0, 1.0,1.0, -1.0,1.0, -1.0,-1.0])
 	var posbuffer = mqBufferData(gl, positions, gl.STATIC_DRAW);
@@ -191,29 +191,35 @@ function mqRender(gl, options) {
 	var self = this;
 	this.width = options.width;
 	this.height = options.height;
-	this.translate = [0,0,5];
 	this.rotate = quat.create();
 	quat.identity(this.rotate);
 
-	this.scale = [1,1,1];
-	this.scaling = this.scale;
+	this.resolution = [options.dimx, options.dimy, options.dimz];
 	this.fov = 45.0;
 	this.focalLength = 1.0 / Math.tan(0.5 * this.fov * Math.PI / 180);
-	this.iscale = [1.0 / this.scale[0], 1.0 / this.scale[1], 1.0 / this.scale[2]];
-	this.center = [0.5 * this.scale[0], 0.5 * this.scale[1], 1.0 / this.scale[2]];
-	this.focus = this.center;
 	this.near = 1.0;
 	this.far = 1000.0;
+	this.resolution = [options.dimx, options.dimy, options.dimz];
+	this.tiles = [options.slicex, options.slicey];
 
 	this.mv = new mqMatrix();
 	this.project = new mqMatrix();
-	this.iproject = null; // inverse projection
+	this.iproject = mat4.create(); // inverse projection
 	
 	// texture
 	this.texVolume = this.gl.createTexture();
 	// shader
 	this.util = new mqUtil();
-	
+	this.cube = {};
+	this.cube.vs = mqCreateShader(gl, getShaderById('vs'), gl.VERTEX_SHADER);
+	this.cube.fs = mqCreateShader(gl, getShaderById('fs'), gl.FRAGMENT_SHADER);
+	this.cube.program = mqCreateProgram(gl, this.cube.vs, this.cube.fs);
+	this.cube.vao = this.util.vaoVolume(gl);
+	this.cube.loc = {};
+	['umv', 'FocalLength', 'WindowSize', 'RayOrigin', 'uvolume'].forEach(function(name){
+		self.cube.loc[name] = mqLocation(gl, self.cube.program, name);
+	})
+
 	this.axis = {};
 	this.axis.vs = mqCreateShader(gl, getShaderById('line-vs'), gl.VERTEX_SHADER);
 	this.axis.fs = mqCreateShader(gl, getShaderById('line-fs'), gl.FRAGMENT_SHADER);
@@ -229,50 +235,95 @@ function mqRender(gl, options) {
 	// delayed render
 	this.delaytimer = null;
 
-	this.gl.clearColor(0.2, 0.2, 0.2, 1.0);
+	this.gl.clearColor(0, 0, 0, 0);
 	this.gl.enable(this.gl.DEPTH_TEST);
 	this.gl.depthFunc(this.gl.LEQUAL);
 	this.gl.enable(this.gl.BLEND);
 	this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
-
-	// perspective matrix
-	this.setPerspective(this.fov, this.width / this.height, this.near, this.far);
-	// get inverted matrix for volume shader 
-	this.iproject = mat4.create();
-	mat4.invert(this.iproject, this.project.m);
 }
 mqRender.prototype.loadTextureArray = function(img, size, numx, numy) {
+	var canvas = document.createElement('canvas');
+	canvas.width = size * numx;
+	canvas.height = size * numy;
+	var ctx = canvas.getContext('2d');
+	ctx.drawImage(img, 0, 0);
 	
+	this.gl.bindTexture(this.gl.TEXTURE_2D_ARRAY, this.texVolume);
+	this.gl.texParameteri(this.gl.TEXTURE_2D_ARRAY, this.gl.TEXTURE_BASE_LEVEL, 0);
+	this.gl.texParameteri(this.gl.TEXTURE_2D_ARRAY, this.gl.TEXTURE_MAX_LEVEL, Math.log2(size));
+	this.gl.texParameteri(this.gl.TEXTURE_2D_ARRAY, this.gl.TEXTURE_MAG_FILTER, this.gl.LINEAR);
+	this.gl.texParameteri(this.gl.TEXTURE_2D_ARRAY, this.gl.TEXTURE_MIN_FILTER, this.gl.LINEAR);
+	this.gl.texStorage3D(
+		this.gl.TEXTURE_2D_ARRAY,
+		Math.log2(size),
+		this.gl.RGBA8,
+		size, 
+		size, 
+		numx*numy
+	);
+	for (let i=0; i<numy; i++) {
+		for (let j=0; j<numx; j++) {
+			var imageData = ctx.getImageData(0+j*size, 0+i*size, size, size);
+			var pixels = new Uint8Array(imageData.data.buffer);
+			this.gl.texSubImage3D(
+				this.gl.TEXTURE_2D_ARRAY, 0, 
+				0, 0, j+i*numx,
+				size, size, 1,
+				this.gl.RGBA, this.gl.UNSIGNED_BYTE, pixels
+			);
+		}
+	}
 }
-mqRender.prototype.setPerspective = function(fovy, aspect, znear, zfar) {
-	mat4.perspective(this.project.m, fovy, aspect, znear, zfar);
-}
-mqRender.prototype.camera = function() {
-	// apply translation to origin, any rotation and scaling
+mqRender.prototype.rayCamera = function() {
 	this.mv.identity();
 
 	// rotate model
 	var rotmat = mat4.create();
 	mat4.fromQuat(rotmat, this.rotate);
 	this.mv.multiply(rotmat);
+}
+mqRender.prototype.initDrawVolume = function() {		
+	this.gl.activeTexture(this.gl.TEXTURE0);
+	this.gl.bindTexture(this.gl.TEXTURE_2D_ARRAY, this.texVolume);
 	
+	this.gl.bindVertexArray(this.cube.vao.vao);
+	this.gl.useProgram(this.cube.program);
+
+	this.gl.uniform1i(this.cube.loc['uvolume'], 0);
+	this.gl.uniform2fv(this.cube.loc['WindowSize'], new Float32Array([this.width, this.height]));
 }
 mqRender.prototype.DrawAxis = function() {
 	this.gl.bindVertexArray(this.axis.vao.vao);
 	this.gl.useProgram(this.axis.program);
-	
-	this.camera();
-	
+			
 	this.gl.uniformMatrix4fv(this.axis.loc['umv'], false, this.mv.m);
 	this.gl.uniformMatrix4fv(this.axis.loc['uproject'], false, this.project.m);
 	this.gl.uniform1f(this.axis.loc['uAlpha'], 0.5);
 	this.gl.uniform4fv(this.axis.loc['uColour'], new Float32Array([1.0, 1.0, 1.0, 0.0]));
+	
 	this.gl.drawArrays(this.axis.vao.type, 0, this.axis.vao.count);
 }
+mqRender.prototype.DrawVolume = function() {
+	this.gl.bindVertexArray(this.cube.vao.vao);
+	this.gl.useProgram(this.cube.program);
+
+	this.gl.uniformMatrix4fv(this.cube.loc['umv'], false, this.mv.m);
+	this.gl.uniform1f(this.cube.loc['FocalLength'], this.focalLength);
+	this.gl.uniform3fv(this.cube.loc['RayOrigin'], new Float32Array([0, 0, 3]));
+	
+	this.gl.drawArrays(this.cube.vao.type, 0, this.cube.vao.count);
+}
 mqRender.prototype.draw = function() {
-	this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
+	
+	this.gl.clear(this.gl.COLOR_BUFFER_BIT 
+		//| this.gl.DEPTH_BUFFER_BIT
+	);
 	this.gl.viewport(this.vp.x, this.vp.y, this.vp.width, this.vp.height);
 
+	this.rayCamera();	
+
+	this.DrawVolume();
+	
 	this.DrawAxis();
 }
 mqRender.prototype.delayDraw = function(time, immediately) {

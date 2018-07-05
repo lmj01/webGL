@@ -1,0 +1,13 @@
+
+
+gl-matrix使用的设置的perspective有问题,导致我花了两天多的时间没有看到预期的画面
+
+volume是一个基本的
+
+volume2是用来绘制坐标系的,在此检测出gl-matrix使用的设置的perspective问题
+
+volume3采用了Single-Pass Raycasting,针对texture-2darray没有效果
+
+voluem4替换掉voluem3中的texture,改成perlin-noise的texture-3d
+
+目前都没有达到预期的效果.就是图像颜色并不是我期待的,让我郁闷的很!

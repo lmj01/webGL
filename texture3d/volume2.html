@@ -18,7 +18,9 @@ out vec4 vColour;
 
 void main(void)
 {
-    gl_Position = uproject * umv * vec4(aVertexPosition, 1.0);
+    //gl_Position = uproject * umv * vec4(aVertexPosition, 1.0);
+    gl_Position = umv * vec4(aVertexPosition, 1.0);
+    //gl_Position = vec4(aVertexPosition, 1.0);
     vec4 colour = aVertexColour;
     float alpha = 1.0;
     if (uColour.a > 0.01) colour = uColour;

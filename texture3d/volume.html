@@ -7,11 +7,14 @@
 precision highp float;
 precision highp int;
 
-uniform mat4 umvp;
 layout(location = 0) in vec3 position;
+uniform mat4 umv;
+out vec4 vPosition;
 void main()
 {
-    gl_Position = umvp * vec4(position, 1.0);
+    gl_Position = umv * vec4(position, 1.0);
+    vPosition = gl_Position;
+    //gl_Position = vec4(position, 1.0);
 }
 </script>
 <script id="fs" type="x-shader/x-fragment">
@@ -21,6 +24,7 @@ precision highp int;
 precision highp sampler2DArray;
 
 out vec4 color;
+in vec4 vPosition;
 const int maxSamples = 256;
 
 const vec3 uBBMin = vec3(0, 0, 0);
@@ -50,9 +54,9 @@ uniform vec4 uvp; // viewport
 uniform vec3 uresolution; // width,height,depth 
 
 float tex3D(vec3 pos) {
-    //vec3 v = texture(uvolume, pos).xyz;
-    //return dot(v, v);
-    return texture(uvolume, pos).x;
+    vec3 v = texture(uvolume, pos).xyz;
+    return dot(v, v);
+    //return texture(uvolume, pos).x;
 }
 
 // light moves with camera
@@ -106,6 +110,8 @@ vec2 rayIntersectBox(vec3 rayDirection, vec3 rayOrigin) {
 
 void main()
 {
+    //color = texture(uvolume, vPosition.xyz);
+    //return;
     // compute eye space coord from window space to get the ray direction 
     mat4 imv = transpose(umv);
     // objectspace * [mv] = eyespace * [p] = clip / w = normalised device coords -> vp -> window 
@@ -229,7 +235,8 @@ void main()
 
     // wirte depth 
     if (true) {             
-        vec4 clip_space_pos = uproject * umv * vec4(rayStart, 1.0);
+        //vec4 clip_space_pos = uproject * umv * vec4(rayStart, 1.0);
+        vec4 clip_space_pos = umv * vec4(rayStart, 1.0);
         float ndc_depth = clip_space_pos.z / clip_space_pos.w;
         float depth = (((gl_DepthRange.far - gl_DepthRange.near) * ndc_depth) +
                         gl_DepthRange.near + gl_DepthRange.far) / 2.0;
@@ -253,7 +260,8 @@ out vec4 vColour;
 
 void main(void)
 {
-    gl_Position = uproject * umv * vec4(aVertexPosition, 1.0);
+    //gl_Position = uproject * umv * vec4(aVertexPosition, 1.0);
+    gl_Position = umv * vec4(aVertexPosition, 1.0);
     vec4 colour = aVertexColour;
     float alpha = 1.0;
     if (uColour.a > 0.01) colour = uColour;
@@ -353,9 +361,9 @@ void main(void)
                 
                 setTimeout( function(){
                     requestAnimationFrame(anonymousRender);
-                    render.rotateX(degree);
-                    render.rotateY(degree);
-                    render.rotateZ(degree);
+                    //render.rotateX(degree);
+                    //render.rotateY(degree);
+                    //render.rotateZ(degree);
                     degree++;
                     if (degree > 360) degree = 0;
                 }, 200);
