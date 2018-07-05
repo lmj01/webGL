@@ -11,3 +11,6 @@ volume3采用了Single-Pass Raycasting,针对texture-2darray没有效果
 voluem4替换掉voluem3中的texture,改成perlin-noise的texture-3d
 
 目前都没有达到预期的效果.就是图像颜色并不是我期待的,让我郁闷的很!
+
+volume4中可以看到基本的效果了，但是不太理性，使用的perlin-noise，
+目的是texture-2darray也达到这种效果才行
