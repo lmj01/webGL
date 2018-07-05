@@ -274,7 +274,7 @@ function mqRender(gl, options) {
 	this.iproject = mat4.create(); // inverse projection
 	
 	// texture
-	this.texVolume = createPyroclasticVolume(128, 0,025);
+	this.texVolume = this.gl.createTexture();
 	// shader
 	this.util = new mqUtil();
 	this.cube = {};
@@ -310,7 +310,6 @@ function mqRender(gl, options) {
 	this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
 }
 mqRender.prototype.loadTextureArray = function(img, size, numx, numy) {
-	return;
 	var canvas = document.createElement('canvas');
 	canvas.width = size * numx;
 	canvas.height = size * numy;
@@ -364,8 +363,7 @@ mqRender.prototype.rayCamera = function() {
 }
 mqRender.prototype.initDrawVolume = function() {		
 	this.gl.activeTexture(this.gl.TEXTURE0);
-	this.gl.bindTexture(this.gl.TEXTURE_3D, this.texVolume);
-	//this.gl.bindTexture(this.gl.TEXTURE_2D_ARRAY, this.texVolume);
+	this.gl.bindTexture(this.gl.TEXTURE_2D_ARRAY, this.texVolume);
 	
 	this.gl.bindVertexArray(this.cube.vao.vao);
 	this.gl.useProgram(this.cube.program);
