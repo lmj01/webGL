@@ -14,3 +14,5 @@ voluem4替换掉voluem3中的texture,改成perlin-noise的texture-3d
 
 volume4中可以看到基本的效果了，但是不太理性，使用的perlin-noise，
 目的是texture-2darray也达到这种效果才行
+
+把sharevol中的gl-matrix替换掉后,发现真是版本的问题!
