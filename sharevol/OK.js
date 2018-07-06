@@ -641,6 +641,7 @@ function ajaxPost(url, params, callback, progress, headers)
     // Try to grab the standard context. If it fails, fallback to experimental.
     try {
       this.gl = canvas.getContext("webgl", options) || canvas.getContext("experimental-webgl", options);
+      //this.gl = canvas.getContext("webgl2", options);
     } catch (e) {
       OK.debug("detectGL exception: " + e);
       throw "No context"
@@ -724,8 +725,8 @@ function ajaxPost(url, params, callback, progress, headers)
     this.gl.bindTexture(this.gl.TEXTURE_2D, this.textures[this.texid]);
     //this.gl.pixelStorei(this.gl.UNPACK_FLIP_Y_WEBGL, true);
     //(Ability to set texture type?)
-    this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.LUMINANCE, this.gl.LUMINANCE, this.gl.UNSIGNED_BYTE, image);
-    //this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, image);
+    //this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.LUMINANCE, this.gl.LUMINANCE, this.gl.UNSIGNED_BYTE, image);
+    this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, image);
     this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MAG_FILTER, filter);
     this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, filter);
     this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.CLAMP_TO_EDGE);
@@ -736,6 +737,10 @@ function ajaxPost(url, params, callback, progress, headers)
 
   WebGL.prototype.setPerspective = function(fovy, aspect, znear, zfar) {
     this.perspective.matrix = mat4.perspective(fovy, aspect, znear, zfar);
+  }
+
+  WebGL.prototype.setOrtho = function(left, right, bottom, top, near, far) {
+    this.perspective.matrix = mat4.ortho(left, right, bottom, top, near);
   }
 
   WebGL.prototype.use = function(program) {
@@ -774,7 +779,15 @@ function ajaxPost(url, params, callback, progress, headers)
     this.program = this.gl.createProgram();
 
     this.vshader = this.compileShader(vs, this.gl.VERTEX_SHADER);
+    var log = this.gl.getShaderInfoLog(this.vshader);
+    if (log) {
+      console.log(log);
+    }
     this.fshader = this.compileShader(fs, this.gl.FRAGMENT_SHADER);
+    var log = this.gl.getShaderInfoLog(this.fshader);
+    if (log) {
+      console.log(log);
+    }
 
     this.gl.attachShader(this.program, this.vshader);
     this.gl.attachShader(this.program, this.fshader);

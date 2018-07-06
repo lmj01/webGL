@@ -37,6 +37,9 @@ function Volume(props, image, interactive, parentEl) {
   this.webgl = new WebGL(this.canvas);
   this.gl = this.webgl.gl;
 
+  var isFragDepthAvailable = this.gl.getExtension('EXT_frag_depth');
+  console.log('frag-depth-ext:',isFragDepthAvailable);
+
   this.rotating = false;
   this.translate = [0,0,4];
   this.rotate = quat4.create();
@@ -68,10 +71,11 @@ function Volume(props, image, interactive, parentEl) {
 
   //Set dims
   this.centre = [0.5*this.scaling[0], 0.5*this.scaling[1], 0.5*this.scaling[2]];
-  this.modelsize = Math.sqrt(3);
+  // disable this, make sure size is same
+  //this.modelsize = Math.sqrt(3);
   this.focus = this.centre;
 
-  this.translate[2] = -this.modelsize*1.25;
+  //this.translate[2] = -this.modelsize*1.25;
 
   OK.debug("New model size: " + this.modelsize + ", Focal point: " + this.focus[0] + "," + this.focus[1] + "," + this.focus[2]);
 
@@ -100,6 +104,25 @@ function Volume(props, image, interactive, parentEl) {
     this.lineColourBuffer.itemSize = 4;
     this.lineColourBuffer.numItems = 6;
 
+    // add stl file to debug the effect is correct or wrong
+    this.loadedstl = false;
+    var that = this;
+    getModelFileByUrl('/sharevol/lowerjaw.stl', function(vertexArray){
+      that.stlVertexBuffer = that.gl.createBuffer();
+      that.gl.bindBuffer(that.gl.ARRAY_BUFFER, that.stlVertexBuffer);
+      that.gl.bufferData(that.gl.ARRAY_BUFFER, vertexArray.vertices, that.gl.STATIC_DRAW);
+      that.stlVertexBuffer.itemSize = 3;
+      that.stlVertexBuffer.numItems = vertexArray.vertices.length / 6;
+      that.loadedstl = true;
+
+      that.stlprogram = new WebGLProgram(that.gl, 'stl-vs', 'stl-fs');
+      if (that.stlprogram.errors) OK.debug(that.stlprogram.errors);
+      that.stlprogram.setup(["aVertexPosition", "aVertexColour", "aVertexNormal"], 
+        ["uMVMatrix","uPMatrix","uColour","uAlpha"]);
+      that.gl.vertexAttribPointer(that.stlprogram.attributes["aVertexPosition"], that.stlVertexBuffer.itemSize, that.gl.FLOAT, false, 24, 0);
+      that.gl.vertexAttribPointer(that.stlprogram.attributes['aVertexNormal'], that.stlVertexBuffer.itemSize, that.gl.FLOAT, false, 24, 12);
+    })
+
   //Bounding box
   this.box([0.0, 0.0, 0.0], [1.0, 1.0, 1.0]);
 
@@ -120,7 +143,9 @@ function Volume(props, image, interactive, parentEl) {
     this.gl.vertexAttribPointer(this.lineprogram.attributes["aVertexPosition"], this.linePositionBuffer.itemSize, this.gl.FLOAT, false, 0, 0);
     this.gl.vertexAttribPointer(this.lineprogram.attributes["aVertexColour"], this.lineColourBuffer.itemSize, this.gl.FLOAT, false, 0, 0);
 
-  var defines = "precision highp float; const highp vec2 slices = vec2(" + this.tiles[0] + "," + this.tiles[1] + ");\n";
+  // here add stl shader 
+  var defines = "#extension GL_EXT_frag_depth : enable\n";
+  defines += "precision highp float; const highp vec2 slices = vec2(" + this.tiles[0] + "," + this.tiles[1] + ");\n";
   defines += (IE11 ? "#define IE11\n" : "#define NOT_IE11\n");
   var maxSamples = interactive ? 1024 : 256;
   defines += "const int maxSamples = " + maxSamples + ";\n\n\n\n\n\n"; //Extra newlines so errors in main shader have correct line #
@@ -139,9 +164,10 @@ function Volume(props, image, interactive, parentEl) {
   this.gl.enable(this.gl.DEPTH_TEST);
   this.gl.clearColor(0, 0, 0, 0);
   //this.gl.clearColor(this.background.red/255, this.background.green/255, this.background.blue/255, 0.0);
-    this.gl.enable(this.gl.BLEND);
-    this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
+  this.gl.enable(this.gl.BLEND);
+  this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
   this.gl.depthFunc(this.gl.LEQUAL);
+  //this.gl.depthFunc(this.gl.GREATER);
 
   //Set default properties
   this.properties = {};
@@ -262,7 +288,7 @@ Volume.prototype.load = function(src) {
   for (var key in src)
     this.properties[key] = src[key]
 
-  if (src.colourmap != undefined) this.properties.usecolourmap = true;
+  if (src.colourmap != undefined) this.properties.usecolourmap = false; // 默认不开启色板
   this.properties.axes = state.views[0].axes;
   this.properties.border = state.views[0].border;
   this.properties.tricubicFilter = src.tricubicfilter;
@@ -327,7 +353,7 @@ Volume.prototype.draw = function(lowquality, testmode) {
   //box/axes draw fully opaque behind volume
   if (this.properties.border) this.drawBox(1.0);
   if (this.properties.axes) this.drawAxis(1.0);
-
+    
   //Volume render (skip while interacting if lowpower device flag is set)
   if (!(lowquality && !this.properties.interactive)) {
     //Setup volume camera
@@ -336,8 +362,9 @@ Volume.prototype.draw = function(lowquality, testmode) {
   
     this.webgl.use(this.program);
     //this.webgl.modelView.scale(this.scaling);  //Apply scaling
-      this.gl.disableVertexAttribArray(this.program.attributes["aVertexColour"]);
+    this.gl.disableVertexAttribArray(this.program.attributes["aVertexColour"]);
 
+    // 场景的数据, 
     this.gl.activeTexture(this.gl.TEXTURE0);
     this.gl.bindTexture(this.gl.TEXTURE_2D, this.webgl.textures[0]);
 
@@ -402,6 +429,8 @@ Volume.prototype.draw = function(lowquality, testmode) {
   this.gl.clear(this.gl.DEPTH_BUFFER_BIT);
   if (this.properties.axes) this.drawAxis(0.2);
   if (this.properties.border) this.drawBox(0.2);
+   
+  this.drawSTL(1.0);
 
   //Running speed test?
   if (testmode) {
@@ -448,6 +477,7 @@ Volume.prototype.camera = function() {
 
   //Perspective matrix
   this.webgl.setPerspective(this.fov, this.gl.viewportWidth / this.gl.viewportHeight, 0.1, 100.0);
+  //this.webgl.setOrtho(-10.0, 10.0, -10.0, 10.0, 0.1, 1000.0);
 }
 
 Volume.prototype.rayCamera = function() {
@@ -466,6 +496,7 @@ Volume.prototype.rayCamera = function() {
 
   //Perspective matrix
   this.webgl.setPerspective(this.fov, this.gl.viewportWidth / this.gl.viewportHeight, 0.1, 100.0);
+  //this.webgl.setOrtho(-10.0, 10.0, -10.0, 10.0, 0.1, 1000.0);
 
   //Get inverted matrix for volume shader
   this.invPMatrix = mat4.create(this.webgl.perspective.matrix);
@@ -516,6 +547,29 @@ Volume.prototype.drawBox = function(alpha) {
   this.gl.drawElements(this.gl.LINES, this.boxIndexBuffer.numItems, this.gl.UNSIGNED_SHORT, 0);
 }
 
+Volume.prototype.drawSTL = function(alpha) {
+  if (!this.loadedstl) return;
+  this.camera();
+  this.webgl.use(this.stlprogram);
+
+  this.gl.uniform1f(this.stlprogram.uniforms["uAlpha"], alpha);
+  this.gl.uniform4fv(this.stlprogram.uniforms["uColour"], new Float32Array([1.0, 0.0, 1.0, 1.0]));
+
+  this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.stlVertexBuffer);
+  this.gl.enableVertexAttribArray(this.stlprogram.attributes["aVertexPosition"]);
+  this.gl.vertexAttribPointer(this.stlprogram.attributes["aVertexPosition"], this.stlVertexBuffer.itemSize, this.gl.FLOAT, false, 24, 0);
+ 
+  //this.gl.enableVertexAttribArray(this.stlprogram.attributes["aVertexNormal"]);
+  //this.gl.vertexAttribPointer(this.stlprogram.attributes["aVertexNormal"], this.stlVertexBuffer.itemSize, this.gl.FLOAT, false, 24, 12);
+ 
+  this.gl.vertexAttribPointer(this.stlprogram.attributes["aVertexColour"], 4, this.gl.UNSIGNED_BYTE, true, 0, 0);
+  
+  //this.webgl.modelView.scale(this.scaling);  //Apply scaling
+  this.webgl.modelView.scale([0.01,0.01,0.01]);  //Apply scaling
+  this.webgl.setMatrices();
+  this.gl.drawArrays(this.gl.TRIANGLES, 0, this.stlVertexBuffer.numItems);
+}
+
 Volume.prototype.timeAction = function(action, start) {
   if (!window.requestAnimationFrame) return;
   var timer = start || new Date().getTime();
@@ -550,7 +604,7 @@ Volume.prototype.rotateY = function(deg) {
 Volume.prototype.rotateZ = function(deg) {
   this.rotation(deg, [0,0,1]);
 }
-
+WebGL
 Volume.prototype.rotation = function(deg, axis) {
   //Quaterion rotate
   var arad = deg * Math.PI / 180.0;

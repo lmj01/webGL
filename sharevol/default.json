@@ -88,7 +88,7 @@
         226.95000000000002
       ],
       "density": 5,
-      "power": 1,
+      "power": 5,
       "colourmap": 0,
       "tricubicfilter": false,
       "zmin": 0,
@@ -100,11 +100,9 @@
       "brightness": -0.11780890196982163,
       "contrast": 1,
       "volume": {
-        "url": "data.jpg",
+        "url": "test272.jpeg",
         "res": [
-          256,
-          256,
-          256
+          400, 400, 272
         ],
         "scale": [
           1,

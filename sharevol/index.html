@@ -7,6 +7,7 @@
 <script type="text/javascript" src="./gl-matrix.js"></script>
 <script type="text/javascript" src="./dat.gui.js"></script>
 <script type="text/javascript" src="./OK.js"></script>
+<script type="text/javascript" src="./loadstl.js"></script>
 <script type="text/javascript" src="./volume.js"></script>
 <script type="text/javascript" src="./slicer.js"></script>
 <script type="text/javascript" src="./main.js"></script>
@@ -39,14 +40,16 @@ precision highp float;
 //const vec2 slices = vec2(16.0,16.0);
 //const int maxSamples = 256;
 
-uniform sampler2D uVolume;
+
+
+uniform sampler2D uVolume; // 2d data texture
 uniform sampler2D uTransferFunction;
 
-uniform vec3 uBBMin;
-uniform vec3 uBBMax;
-uniform vec3 uResolution;
+uniform vec3 uBBMin; // box for intersect to make qualifier for ray trace
+uniform vec3 uBBMax; 
+uniform vec3 uResolution; // for 2d data 
 
-uniform bool uEnableColour;
+uniform bool uEnableColour; // control colour map
 
 uniform float uBrightness;
 uniform float uContrast;
@@ -308,14 +311,14 @@ void main()
 
     if (T > 0.95) discard;
     gl_FragColor = vec4(colour, 1.0 - T);
-
+#define WRITE_DEPTH
 #ifdef WRITE_DEPTH
     /* Write the depth !Not supported in WebGL without extension */
     vec4 clip_space_pos = uPMatrix * uMVMatrix * vec4(rayStart, 1.0);
     float ndc_depth = clip_space_pos.z / clip_space_pos.w;
     float depth = (((gl_DepthRange.far - gl_DepthRange.near) * ndc_depth) + 
                      gl_DepthRange.near + gl_DepthRange.far) / 2.0;
-    gl_FragDepth = depth;
+    gl_FragDepthEXT = depth;
 #endif
 }
 
@@ -555,6 +558,88 @@ void main(void)
 
 </script>
 
+<script id="stl-vs" type="x-shader/x-vertex">
+//precision highp float;
+//STL model shader
+precision highp float;
+
+attribute vec3 aVertexPosition;
+attribute vec3 aVertexNormal;
+attribute vec4 aVertexColour;
+
+uniform mat4 uMVMatrix;
+uniform mat4 uPMatrix;
+
+uniform vec4 uColour;
+uniform float uAlpha;
+
+varying vec4 vColour;
+
+const vec3 translate = vec3(45,33,62);
+const vec3 rotatex = vec3(1.0,0.0,0.0);
+const vec3 rotatey = vec3(0.0,1.0,0.0);
+const vec3 rotatez = vec3(0.0,0.0,1.0);
+
+vec4 quat_from_axis_angle(vec3 axis, float deg) {
+  vec4 quat;
+  float angle = (deg * 0.5) * 3.1415926 / 180.0;
+  quat.x = axis.x * sin(angle);
+  quat.y = axis.y * sin(angle);
+  quat.z = axis.z * sin(angle);
+  quat.w = cos(angle);
+  return quat;
+}
+vec4 quat_conj(vec4 q) {
+  return vec4(-q.x, -q.y, -q.z, q.w);
+}
+vec4 quat_mul(vec4 q1, vec4 q2) {
+  vec4 quat;
+  quat.x = (q1.w * q2.x) + (q1.x * q2.w) + (q1.y * q2.z) - (q1.z * q2.y);
+  quat.y = (q1.w * q2.y) - (q1.x * q2.z) + (q1.y * q2.w) + (q1.z * q2.x);
+  quat.z = (q1.w * q2.z) + (q1.x * q2.y) - (q1.y * q2.x) + (q1.z * q2.w);
+  quat.w = (q1.w * q2.w) - (q1.x * q2.x) - (q1.y * q2.y) - (q1.z * q2.z);
+  return quat;
+}
+vec3 rotate_vertex(vec3 pos, vec3 axis, float deg) {
+  vec4 q = quat_from_axis_angle(axis, deg);
+  vec4 q_conj = quat_conj(q);
+  vec4 q_pos = vec4(pos.x, pos.y, pos.z, 0);
+
+  vec4 q_tmp = quat_mul(q, q_pos);
+  q = quat_mul(q_tmp, q_conj);
+  return vec3(q.x, q.y, q.z);
+}
+
+void main(void)
+{
+  vec3 pos = rotate_vertex(aVertexPosition, rotatex, -90.0);
+  pos = rotate_vertex(pos, rotatez, 160.0);
+  pos += translate;
+
+  vec4 mvPosition = uMVMatrix * vec4(pos, 1);
+  gl_Position = uPMatrix * mvPosition;
+  vec4 colour = aVertexColour;
+  float alpha = 1.0;
+  if (uColour.a > 0.01) colour = uColour;
+  if (uAlpha > 0.01) alpha = uAlpha;
+  vColour = vec4(colour.rgb, colour.a * alpha);
+}
+
+</script>
+
+<script id="stl-fs" type="x-shader/x-fragment">
+precision highp float;
+//STL model fragment shader
+precision highp float;
+varying vec4 vColour;
+
+void main(void)
+{
+  gl_FragColor = vColour;
+}
+
+</script>
+  
 <style>
 html {
   font-family: "Lucida Grande",sans-serif;
