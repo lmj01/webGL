@@ -1,0 +1,240 @@
+<!doctype html>
+<html>
+	<head>
+		<title>GPGPU</title>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+		<style>
+			.res{position: absolute; left: 0; top: 0; width:1px; height:1px; overflow: hidden;}
+			img,canvas{display:block;max-width: 320px}
+			input{margin-bottom: 10px;}
+			p{border-bottom: 1px solid #666; line-height: 30px;}
+		</style>
+	</head>
+
+	<body>
+		<input type="button" value="使用CPU计算" onclick="colorPicker.config({pickHues: [60, 200], useGPU: false}); colorPicker.load('cross-domain/photo.jpg');"/>
+		<input type="button" value="使用GPU计算" onclick="colorPicker.config({pickHues: [60, 200], useGPU: true}); colorPicker.load('cross-domain/photo.jpg');"/>
+		<p>原始图片：</p>
+		<img src="cross-domain/photo.jpg" alt="">
+		<div class="res">
+			<img class="yellow" src="cross-domain/f1.png" alt="">
+			<img class="green" src="cross-domain/f2.png" alt="">
+			<img class="blue" src="cross-domain/f3.png" alt="">
+			<img class="purple" src="cross-domain/f4.png" alt="">
+		</div>
+		<script src="gpu.js"></script>
+		<script>
+			var colorPicker = {
+				maps: [],
+				hueIndexs: [],
+				faces: document.querySelectorAll('.res img'),
+				config: function(o){
+					var hueValue = o.pickHues || [55, 85, 190, 260];
+					var rangle = 10;
+					var hueIndexs = [];
+					for(var i = 0; i < 360; i++){
+						for(var j = 0; j < hueValue.length; j++) {
+							var min = hueValue[j]-rangle;
+							var max = hueValue[j]+rangle;
+							if(i >= min && i < max) {
+								hueIndexs[i] = j+1;
+								break;
+							}
+						}
+					}
+					this.hueIndexs = hueIndexs;
+					this.useGPU = o.useGPU;
+				},
+				load: function(url){
+					var self = this;
+					var img =  new Image();
+					img.onload = function(){
+						var p = document.createElement('p');
+						p.innerHTML = self.useGPU ? '使用GPU计算：' : '使用CPU计算：';
+						document.body.appendChild(p);
+
+						var canvas = document.createElement('canvas');
+						canvas.width = img.width;
+						canvas.height = img.height;
+						var ctx = canvas.getContext('2d');
+						ctx.drawImage(img, 0, 0);
+						document.body.appendChild(canvas);
+						self.canvas = canvas;
+
+						var time0 = new Date();
+						self.useGPU ? self.gpu() : self.cpu();
+						var time1 = new Date();
+						self.detect();
+						var time2 = new Date();
+						var info = document.createElement('p');
+						info.innerHTML = '色相转换时间：' + (time1-time0) + '<br/>总时间' + (time2-time0);
+						document.body.appendChild(info);
+					}
+					img.src = url;
+				},
+				cpu: function(){
+					var self = this;
+					var canvas = this.canvas;
+					var width = canvas.width;
+					var ctx = canvas.getContext('2d');
+					var maps = [];
+					var pixels = ctx.getImageData(0, 0, canvas.width, canvas.height);
+					var rgb2hsv = function(r, g, b) {
+						if (arguments.length === 1) {
+							g = r.g, b = r.b, r = r.r;
+						}
+						var max = Math.max(r, g, b), min = Math.min(r, g, b),
+							d = max - min,
+							h,
+							s = (max === 0 ? 0 : d / max),
+							v = max / 255;
+						switch (max) {
+							case min: h = 0; break;
+							case r: h = (g - b) + d * (g < b ? 6: 0); h /= 6 * d; break;
+							case g: h = (b - r) + d * 2; h /= 6 * d; break;
+							case b: h = (r - g) + d * 4; h /= 6 * d; break;
+						}
+						return {
+							h: self.hueIndexs[parseInt(h*360)],
+							s: s,
+							v: v
+						}
+					};
+                    for(var i = 0; i < pixels.data.length; i += 4) {
+                        var x = i / 4 % width;
+                        var y = Math.floor(i / 4 / width);
+                        if(!maps[y]) maps[y] = [];
+                        maps[y][x] = rgb2hsv(pixels.data[i], pixels.data[i+1], pixels.data[i+2]);
+                    }
+
+					this.maps = maps;
+					
+				},
+				gpu: function(){
+					var canvas = this.canvas;
+					var width = canvas.width;
+					var maps = [];
+					gpu.create(
+						"float r = color.x*255.0;"+
+						"float g = color.y*255.0;"+
+						"float b = color.z*255.0;"+
+						"float _max = max(max(r, g), b);"+
+						"float _min = min(min(r, g), b);"+
+						"float d = _max - _min;"+
+						"float h;"+
+						"float s = _max == 0.0 ? 0.0 : d / _max;"+
+						"float v = _max / 255.0;" +
+						"if(_max == _min){ h = 0.0;}"+
+						"else if(_max == r){ h = (g - b) + d * (g < b ? 6.0: 0.0); h /= 6.0 * d;}"+
+						"else if(_max == g){ h = (b - r) + d * 2.0; h /= 6.0 * d;}"+
+						"else if(_max == b){ h = (r - g) + d * 4.0; h /= 6.0 * d;}"+
+						"color = vec4(h, s, v, 1.0);",
+						512
+					);
+                    var result = gpu.run(canvas); 
+                    for(var i = 0; i < result.length; i += 4) {
+                        var x = i / 4 % width;
+                        var y = Math.floor(i / 4 / width);
+                        if(!maps[y]) maps[y] = [];
+                        maps[y][x] = {h: this.hueIndexs[parseInt(result[i]*1.412)], v: result[i+2]>0.5?true:false};
+					} 
+					this.maps = maps;
+				},
+				detect: function(){
+					var maps = this.maps;
+					var width = this.canvas.width;
+					var height = this.canvas.height;
+					var finder = function(x, y){
+						var rect;
+						var walk = function(x, y, offset) {
+							x += offset[0];
+							y += offset[1];
+
+							// 如果越界
+							if(x >= width || x < 0 || y >= height) {
+								return;
+							}
+							var current = maps[y][x];
+							
+							// 如果像素未被收集
+							if(!current.checked) {
+
+								// 如果非目标像素
+								if(!current.h || !current.v) {
+									current.checked = true;
+									return;
+								}
+
+								// 如果是切入点
+								if(offset[0] == 0 && offset[1] == 0) {
+									rect = {bound: [y, x, y, x], hue: current.h, num: 0};
+								}
+
+								// 获取周边像素
+								var top = maps[y-1] && maps[y-1][x];
+								var bottom = maps[y+1] && maps[y+1][x];
+								var left = maps[y][x-1];
+								var right = maps[y][x+1];
+
+								// 如果不存在
+								if(!top || !bottom || !left || !right) {
+									return;
+								}
+
+								// 如果当前像素符合要求
+								if(current.h == top.h &&  current.h == bottom.h &&  current.h == left.h &&  current.h == right.h && rect) {
+									rect.bound[1] = Math.max(rect.bound[1], x);
+									rect.bound[2] = Math.max(rect.bound[2], y);
+									rect.bound[3] = Math.min(rect.bound[3], x);
+									rect.num++;
+									maps[y][x].checked = true;
+									if(rect.num > 6942/3) {
+										return null;
+									}
+									
+									walk(x, y, [1, 0]);
+									walk(x, y, [-1, 0]);
+									walk(x, y, [0, 1]); 
+								} 
+							}
+						}
+						walk(x, y, [0, 0]);
+						return rect;
+					};
+
+					var rects = [];
+					for(var y = 0; y < maps.length; y++) {
+						for(var x = 0; x < maps[y].length; x++) {
+							var rect = finder(x, y);
+							if(rect) {
+								var w = rect.bound[1] - rect.bound[3];
+								var h = rect.bound[2] - rect.bound[0];
+								var ratio = w/h; 
+								var density =  rect.num / (w * h);
+								rect.density = density;
+								rect.ratio = ratio;
+								rect.w = w;
+								rect.h = h;
+								rect.x = rect.bound[3];
+								rect.y = rect.bound[0];
+								if(w > 20 && h > 20){
+									rects.push(rect);
+								}
+							}
+						} 
+					};
+					this.rects = rects;
+
+					var ctx = this.canvas.getContext('2d');
+					for(var i = 0; i < rects.length; i++) {
+						var rect = rects[i];
+						ctx.drawImage(this.faces[rect.hue-1], rect.x, rect.y, rect.w, rect.h);
+					}
+				}
+			}
+
+
+		</script>
+	</body>
+</html>

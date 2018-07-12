@@ -100,9 +100,9 @@
       "brightness": -0.11780890196982163,
       "contrast": 1,
       "volume": {
-        "url": "test272.jpeg",
+        "url": "/resource/272.jpeg",
         "res": [
-          400, 400, 272
+          400,400,272
         ],
         "scale": [
           1,

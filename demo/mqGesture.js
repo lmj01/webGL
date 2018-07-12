@@ -1,18 +1,16 @@
-function mqMath(){
-    return this;
-}
-mqMath.prototype.distance = function(p1, p2){
+var mqMath = {}
+mqMath.distance = function(p1, p2){
     var dx = p2.x - p1.x;
     var dy = p2.y - p1.y;
     return Math.sqrt(dx*dx+dy*dy);
 }
-mqMath.prototype.toDeg = function(rad) {
+mqMath.toDeg = function(rad) {
     return rad * (180 / Math.PI);
 }
-mqMath.prototype.toRad = function(deg) {
+mqMath.toRad = function(deg) {
     return deg * (Math.PI / 180);
 }
-mqMath.prototype.angle = function(p1, p2) {
+mqMath.angle = function(p1, p2) {
     var dx = p2.x - p1.x;
     var dy = p2.y - p1.y;
     var rad = Math.atan2(dy, dx);
@@ -28,21 +26,19 @@ function mqGestureSwipe(targetid, options) {
     var onDirDown = options.onDirDown || function(){};
     var onDirLeft = options.onDirLeft || function(){};
     var onDirRight = options.onDirRight || function(){};
-    var mqmath = new mqMath();    
     
-
-    function onStart(e) {
+    function onStart(e) {        
         let touch = e.touches[0];
         if (!touch) touch = e.changedTouches[0];
         this.clickdown = {x:touch.pageX, y:touch.pageY};
     }
     function onMove(e) {
-        return;
+        if (e.touches.length < 2) return;
         let touch = e.touches[0];
         if (!touch) touch = e.changedTouches[0];
         var click = {x:touch.pageX, y:touch.pageY};
-        var force = mqmath.distance(click, this.clickdown) / 10;
-        var angle = mqmath.angle(click, this.clickdown);
+        var force = mqMath.distance(click, this.clickdown) / 10;
+        var angle = mqMath.angle(click, this.clickdown);
         angle.force = force;
         //this.deduction(angle);
         var rAngle = angle.rad;
@@ -75,6 +71,7 @@ function mqGestureSwipe(targetid, options) {
         }
     }
     function onEnd(e) {
+        return ;
         let touch = e.touches[0];
         if (!touch) touch = e.changedTouches[0];
         var click = {x:touch.pageX, y:touch.pageY};

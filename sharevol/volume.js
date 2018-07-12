@@ -430,7 +430,7 @@ Volume.prototype.draw = function(lowquality, testmode) {
   if (this.properties.axes) this.drawAxis(0.2);
   if (this.properties.border) this.drawBox(0.2);
    
-  this.drawSTL(1.0);
+  this.drawSTL(0.2);
 
   //Running speed test?
   if (testmode) {

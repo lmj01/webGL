@@ -1,0 +1,100 @@
+<!doctype html>
+<html>
+	<head>
+		<title>capsule demo</title>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+		<style>
+			body {
+				background-color : #333;
+			}
+			canvas {
+				position: absolute;
+				width:90%;
+				height:90%;
+			}
+			button {
+				z-index: 5;
+				position: absolute;
+			}
+		</style>
+	</head>
+	<body>
+	<canvas id="id_canvas" width="100%" height="100%"></canvas>
+	<br />
+	<button onclick="switchCamera();">switch-camera</button>
+	<script type="text/javascript" src="./../lib/three.js"></script>
+	<script type="text/javascript" src="./../lib/OrbitControls.js"></script>
+	<script>
+	    var canvas = document.getElementById("id_canvas");
+		
+		let scene = new THREE.Scene();
+		let camera;
+		
+		let aspect = window.innerWidth / window.innerHeight;
+		let cameraPerspective = new THREE.PerspectiveCamera(75, canvas.width/canvas.height, 0.1, 100.0);
+		cameraPerspective.position.z = 150;
+		scene.add(cameraPerspective);
+		
+		let orthoSize = 50;
+		let cameraOrtho = new THREE.OrthographicCamera(
+			-orthoSize*aspect, orthoSize*aspect,
+			orthoSize, -orthoSize,
+			100, 250
+		)
+		cameraOrtho.position.z = 150;
+		scene.add(cameraOrtho);
+		camera = cameraPerspective;
+		let isOrtho = false;
+		function switchCamera() {
+			console.log('is Orhto camera', isOrtho);
+			if (isOrtho) camera = cameraOrtho;
+			else camera = cameraPerspective;
+			isOrtho = !isOrtho;
+		}
+
+		var renderer = new THREE.WebGLRenderer({canvas:canvas});
+		
+		let controlPerspective = new THREE.OrbitControls(cameraPerspective, renderer.domElement);
+		controlPerspective.minDistance = 100;
+		controlPerspective.maxDistance = 250;
+		controlPerspective.enablePan = false;
+		controlPerspective.enableDamping = true;
+
+		let controlOrtho = new THREE.OrbitControls(cameraOrtho, renderer.domElement);
+		controlOrtho.minZoom = 0.5;
+		controlOrtho.maxZoom = 2;
+		controlOrtho.enablePan = false;
+		controlOrtho.enableDamping = true;
+		
+		
+		var g1 = new THREE.BoxGeometry(1, 1, 1);
+		var m1 = new THREE.MeshBasicMaterial({color:0x00ff00});
+		var cube = new THREE.Mesh(g1, m1);
+		cube.position.x = -1;
+		scene.add(cube);
+
+		// 锥体
+		var g2 = new THREE.CylinderGeometry(0.35, 0.3, 1, 32, 32);
+		var m2 = new THREE.MeshBasicMaterial({color:0x0000ff});
+		var halfCone = new THREE.Mesh(g2, m2);
+		halfCone.position.x = 1;
+		scene.add(halfCone);
+		// 
+		
+		camera.position.z = 5;
+		
+		function render() {
+			requestAnimationFrame(render);
+			
+			//cube.rotation.x += 0.1;
+			//cube.rotation.y += 0.1;
+			//halfCone.rotation.x += 0.1;
+			//halfCone.rotation.y += 0.1;
+
+			renderer.render(scene, camera);
+		}
+		render();
+	</script>
+	</body>
+</html>

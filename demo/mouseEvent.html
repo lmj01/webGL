@@ -1,0 +1,65 @@
+<!doctype html>
+<html>
+	<head>
+		<title>mouse event demo</title>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+		<style>
+			body {
+				background-color : #333;
+				width: 100%;
+				height:100%;
+			}
+		</style>
+		<script id="vs" type="x-shader/x-vertex">
+			precision highp float;
+
+			attribute vec3 aVertexPosition;
+			uniform vec4 uInColor;
+						
+			varying vec4 vColour;
+			
+			void main(void)
+			{
+			  gl_Position = vec4(aVertexPosition, 1.0);
+			  vColour = uInColor;
+			}			
+			</script>	
+					
+			<script id="fs" type="x-shader/x-fragment">
+			precision highp float;
+			varying vec4 vColour;
+			uniform int idxDiv;			
+			void main(void)
+			{
+				if (idxDiv == 0) {
+					gl_FragColor = vec4(0.0, vColour.gba);
+				} else if (idxDiv == 1) {
+					gl_FragColor = vec4(vColour.r, 0.0, vColour.ba);
+				} else if (idxDiv == 2) {
+					gl_FragColor = vec4(vColour.rg, 0.0, vColour.a);
+				} else {
+					gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
+				}
+			}
+			
+			</script>			
+	</head>
+	<body>
+	<script>
+		window.onerror = function(msg, uri, row, col, obj) {
+			var msg = msg +":"+uri+":("+row+","+col+")";
+			alert(msg);
+			return true;
+		}
+	</script>
+	<script type="text/javascript" src="./../lib/Mouse.js"></script>
+	<script type="text/javascript" src="./../lib/mqMath.js"></script>
+	<script type="text/javascript" src="./../lib/mqShader.js"></script>
+	<script type="text/javascript" src="./mouseEvent.js"></script>
+	<script>
+			let demo = new Slicer(document.body);
+			demo.draw();
+	</script>
+	</body>
+</html>
