@@ -100,12 +100,12 @@ mqUtil.prototype.vaoAxis = function(gl) {
 	gl.bindVertexArray(vao);
 
 	var vertexPositions = [
-		-1.0,  0.0,  0.0,
-		1.0,  0.0,  0.0,
-		0.0, -1.0,  0.0, 
-		0.0,  1.0,  0.0, 
-		0.0,  0.0, -1.0, 
-		0.0,  0.0,  1.0
+		-100.0,  0.0,  0.0,
+		100.0,  0.0,  0.0,
+		0.0, -100.0,  0.0, 
+		0.0,  100.0,  0.0, 
+		0.0,  0.0, -100.0, 
+		0.0,  0.0,  100.0
 	];
 	var posbuffer = mqBufferData(gl, new Float32Array(vertexPositions), gl.STATIC_DRAW);
 	var vertexColours =  [
@@ -276,11 +276,17 @@ mqRender.prototype.loadTextureArray = function(img, size, numx, numy) {
 }
 mqRender.prototype.rayCamera = function() {
 	this.mv.identity();
+	mat4.targetTo(this.mv.m, [0,0,5], [0,0,0], [0,1,0]);
 
 	// rotate model
 	var rotmat = mat4.create();
 	mat4.fromQuat(rotmat, this.rotate);
 	this.mv.multiply(rotmat);
+
+	mat4.perspective(this.project.m, 0.78, 1, 1.0, 10000.0);
+	//mat4.multiply(umvp, uproject, umv);
+	mat4.multiply(this.mv.m, this.mv.m, this.project.m);
+
 }
 mqRender.prototype.initDrawVolume = function() {		
 	this.gl.activeTexture(this.gl.TEXTURE0);

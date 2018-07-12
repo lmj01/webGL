@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<script id="vs2" type="x-shader/x-vertex">
+#version 300 es
+precision highp float;
+
+uniform mat4 umvp;
+layout(location = 0) in vec3 Position;
+layout(location = 1) in vec3 Colour;
+out vec4 vColor;
+
+void main()
+{
+    gl_Position = umvp * vec4(Position, 1.0);
+    //gl_Position = vec4(Position, 1.0);
+    vColor = vec4(Colour, 1.0);
+}
+</script>
+<script id="fs2" type="x-shader/x-fragment">
+#version 300 es
+precision highp float;
+
+in vec4 vColor;
+out vec4 FragColor;
+void main()
+{
+    FragColor = vColor;
+    //FragColor = vec4(1,0,0,1);
+}
+</script>
+<style>
+    #demo {
+        border: 1px solid red;
+    }
+</style>
+</head>
+<body>
+    <canvas id="demo" width="600" height="600"></canvas>
+    <script src="./gl-matrix.js"></script>
+    <script>
+        function getShaderSource(id) {
+            return document.getElementById(id).textContent.replace(/^\s+|\s+$/g, '');
+        }
+        function createShader(gl, source, type) {
+            var shader = gl.createShader(type);
+            gl.shaderSource(shader, source);
+            gl.compileShader(shader);
+            var log = gl.getShaderInfoLog(shader);
+            if (log) {
+                console.log(log);
+            }
+            return shader;
+        }
+        function createProgram(gl, vs, fs) {
+            var program = gl.createProgram();
+            gl.attachShader(program, vs); gl.deleteShader(vs);
+            gl.attachShader(program, fs); gl.deleteShader(fs);
+            gl.linkProgram(program);
+            var log = gl.getProgramInfoLog(program);
+            if (log) {
+                console.log('program',log);
+            }
+            return program;            
+        }
+
+        var ctxwidth = 600;// window.innerWidth;
+        var ctxheight = 600; //window.innerHeight;
+        let canvas = document.getElementById('demo');
+        canvas.width = ctxwidth;
+        canvas.height = ctxheight;
+        canvas.setAttribute('width', ctxwidth);
+        canvas.setAttribute('height', ctxheight);
+        let gl = canvas.getContext( 'webgl2', { antialias: true } )
+        if( gl == null ) { alert( 'requires webgl2 support!' ) }
+            
+        var vao = gl.createVertexArray();
+        gl.bindVertexArray(vao);
+
+        var vertices = [
+            -0.5, 0.5, 0.0,
+            -0.5, -0.5, 0.0,
+            0.5, -0.5, 0.0
+        ];
+
+        var colors = [
+            1.0, 0.0, 0.0, 1.0,
+            0.0, 1.0, 0.0, 1.0,
+            0.0, 0.0, 1.0, 1.0
+        ];
+
+        var indices = [
+            0,1,2, 
+        ];
+
+        // Create and store data into vertex buffer
+        var vertex_buffer = gl.createBuffer ();
+        gl.bindBuffer(gl.ARRAY_BUFFER, vertex_buffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+        gl.bindBuffer(gl.ARRAY_BUFFER, null);
+
+        // Create and store data into color buffer
+        var color_buffer = gl.createBuffer ();
+        gl.bindBuffer(gl.ARRAY_BUFFER, color_buffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+        gl.bindBuffer(gl.ARRAY_BUFFER, null);
+
+        // Create and store data into index buffer
+        var index_buffer = gl.createBuffer ();
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, index_buffer);
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
+
+        gl.bindVertexArray(null);       
+        
+        let vs = createShader(gl, getShaderSource('vs2'), gl.VERTEX_SHADER);
+        let fs = createShader(gl, getShaderSource('fs2'), gl.FRAGMENT_SHADER);
+        let program = createProgram(gl, vs, fs);
+        var locData = [];
+        function bindLocation(uniforms) {
+            uniforms.forEach(function(name) {
+                locData[name] = gl.getUniformLocation(program, name);
+            })
+        }
+        function getLocation(name) {
+            if(!locData.hasOwnProperty(name)) 
+                throw "no such attribute name : " + name;
+            return locData[name];
+        }        
+        bindLocation([
+            'umvp'
+        ]);
+    
+        var FieldOfView = 0.78; // 45-degree
+        var near = 1.0;
+        var far = 10000.0;
+        var rotate = quat.create();
+        var degree = 0;
+        function updateRotate(deg, axis) {
+            var rad = deg * Math.PI / 180.0;
+	        var rotation = quat.create();
+	        quat.setAxisAngle(rotation, axis, rad);
+	        quat.normalize(rotation, rotation);
+	        quat.multiply(rotate, rotation, rotate);
+        }
+        function rotateX(deg) {
+	        updateRotate(deg, [1,0,0]);
+        }
+        function rotateY(deg) {
+	        updateRotate(deg, [0,1,0]);
+        }
+        function rotateZ(deg) {
+	        updateRotate(deg, [0,0,1]);
+        }
+
+        var umvp = mat4.create();
+        var uproject = mat4.create();
+        var uview = mat4.create();
+        var umv = mat4.create();
+        var eye = vec3.fromValues(0, 0, 0.2);
+        var center = vec3.fromValues(0, 0, 0);
+        var up = vec3.fromValues(0, 1, 0);
+
+        function get_project(fovy, aspect, near, far) {
+            let f = 1.0 / Math.tan(fovy / 2), nf;
+            var out = mat4.create();
+            out[0] = f / aspect;
+            out[1] = 0;
+            out[2] = 0;
+            out[3] = 0;
+            out[4] = 0;
+            out[5] = f;
+            out[6] = 0;
+            out[7] = 0;
+            out[8] = 0;
+            out[9] = 0;
+            out[11] = -1;
+            out[12] = 0;
+            out[13] = 0;
+            out[15] = 0;
+            nf = 1 / (near - far);
+            out[10] = (far + near) * nf;
+            out[14] = ( 2 * far * near) * nf;
+            return out;
+
+        }
+        function updateMatrix() {
+            
+            mat4.identity(uview);
+            mat4.targetTo(uview, eye, center, up);
+            
+            var modelMatrix = mat4.create();
+            
+            // rotate model
+            var rotmat = mat4.create();
+            mat4.fromQuat(rotmat, rotate);
+            mat4.multiply(modelMatrix, modelMatrix, rotmat);
+
+            mat4.multiply(umv, uview, modelMatrix);
+
+            //mat4.perspective(uproject, FieldOfView, ctxwidth/ctxheight, near, far);
+            //console.log('in perspective:', FieldOfView, ctxwidth/ctxheight, near, far);
+            //console.log('out perspective:',uproject);
+            //uproject = get_project(45.0, ctxwidth/ctxheight, near, far);
+            //console.log('in perspective:', 45.0, ctxwidth/ctxheight, near, far);
+            //console.log('out', uproject);            
+            
+            //mat4.multiply(umvp, uproject, umv);
+            mat4.multiply(umvp, umv, uproject);
+        }
+
+        
+        function work_render() {   
+            
+            gl.enable(gl.DEPTH_TEST);
+            gl.depthFunc(gl.LEQUAL);
+          
+            gl.useProgram(program);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, vertex_buffer);
+            gl.bindBuffer(gl.ARRAY_BUFFER, color_buffer);
+            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, index_buffer);
+
+            if (false) {
+                gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+                gl.enableVertexAttribArray(0);
+            } else {
+                gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+                gl.enableVertexAttribArray(0);
+                
+                gl.vertexAttribPointer(1, 4, gl.FLOAT, false, 0, 0);            
+                gl.enableVertexAttribArray(1);
+                gl.bindVertexArray(vao);
+            }
+
+            updateMatrix();
+
+            gl.uniformMatrix4fv(getLocation('umvp'), false, umvp);
+
+            gl.clearColor(0.2, 0.2, 0.2, 1.0);
+            gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);            
+            gl.viewport(0, 0, ctxwidth, ctxheight);            
+
+            //gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_SHORT, 0);
+            gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+            degree++;
+            //console.log(degree);
+            rotateX(degree);
+            rotateY(degree);
+            //rotateZ(degree);
+
+            setTimeout( function(){
+                requestAnimationFrame(work_render);
+            }, 200);                  
+        }
+        work_render();
+    
+    </script>        
+</body>
+</html>

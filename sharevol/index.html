@@ -52,21 +52,29 @@ uniform vec3 uResolution; // for 2d data
 uniform bool uEnableColour; // control colour map
 
 uniform float uBrightness;
-uniform float uContrast;
+uniform float uContrast; 
 uniform float uSaturation;
 uniform float uPower;
 
-uniform mat4 uPMatrix;
-uniform mat4 uInvPMatrix;
-uniform mat4 uMVMatrix;
-uniform mat4 uNMatrix;
-uniform vec4 uViewport;
+uniform mat4 uPMatrix; // project matrix -perspective
+uniform mat4 uInvPMatrix; // invert project matrix 
+uniform mat4 uMVMatrix; // model view matrix 
+uniform mat4 uNMatrix; // normal matrix
+uniform vec4 uViewport; 
 uniform int uSamples;
-uniform float uDensityFactor;
+// isosurface , it is a surface that represents points of a constant value(density),
+// within a volume of space, in other words, it is a level set of
+// a continuous function whose dmoain is 3D-space.
+// in medical imaging, isosurfaces may be used to represent regions of a particular 
+// density in a three-dimensional CT scan, allowing the visulaiztion of internal organs,
+// bones, or other structures.
+// isosurface is the important role to 3d-vis
+uniform float uDensityFactor; // 
 uniform float uIsoValue;
 uniform vec4 uIsoColour;
 uniform float uIsoSmooth;
 uniform int uIsoWalls;
+
 uniform int uFilter;
 uniform vec2 uRange;
 uniform vec2 uDenMinMax;
@@ -74,8 +82,8 @@ uniform vec2 uDenMinMax;
 //#define tex3D(pos) interpolate_tricubic_fast(pos)
 //#define tex3D(pos) texture3Dfrom2D(pos).x
 
-vec2 islices = vec2(1.0 / slices.x, 1.0 / slices.y);
-
+vec2 islices = vec2(1.0 / slices.x, 1.0 / slices.y); //
+// the 2d texture contain3 3d data, so need transform to get data 
 vec4 texture3Dfrom2D(vec3 pos)
 {
   //Get z slice index and position between two slices
@@ -103,7 +111,7 @@ float tex3D(vec3 pos)
     return interpolate_tricubic_fast(pos);
   return texture3Dfrom2D(pos).x;
 }
-
+// webgl 1.x no built-in transpose function 
 // It seems WebGL has no transpose
 mat4 transpose(in mat4 m)
 {
@@ -126,6 +134,8 @@ void lighting(in vec3 pos, in vec3 normal, inout vec3 colour)
 {
   vec4 vertPos = uMVMatrix * vec4(pos, 1.0);
   vec3 lightDir = normalize(lightPos - vertPos.xyz);
+  // AD-abmient and diffuse color factor 
+  // no specular in volume 
   vec3 lightWeighting = ambColour + diffColour * diffuse * clamp(abs(dot(normal, lightDir)), 0.1, 1.0);
 
   colour *= lightWeighting;
@@ -172,8 +182,19 @@ void main()
     mat4 invMVMatrix = transpose(uMVMatrix);
     //ObjectSpace *[MV] = EyeSpace *[P] = Clip /w = Normalised device coords ->VP-> Window
     //Window ->[VP^]-> NDC ->[/w]-> Clip ->[P^]-> EyeSpace ->[MV^]-> ObjectSpace
+    // Local Space(Object Space)
+    // World Space 
+    // View Space(Eye Space)
+    // Clip Space 
+    // Screen Space
+    // localSpace * modelMatrix => worldSpace * viewMatrix => viewSpace * projectMatrix  => clipSpace => viewport => screenSpace
+    // NDC all vertex x,y,z component in [-1.0,1.0]
+    // the gl_FragCoord ,the location in window space, the x,y,z are the window-space position,
+    // the z value will be written to the depth buffer if gl_FragDepth is not written to 
+    // 
     vec4 ndcPos;
     ndcPos.xy = ((2.0 * gl_FragCoord.xy) - (2.0 * uViewport.xy)) / (uViewport.zw) - 1.0;
+    // 
     ndcPos.z = (2.0 * gl_FragCoord.z - gl_DepthRange.near - gl_DepthRange.far) /
                (gl_DepthRange.far - gl_DepthRange.near);
     ndcPos.w = 1.0;

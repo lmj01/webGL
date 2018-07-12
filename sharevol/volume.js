@@ -162,6 +162,7 @@ function Volume(props, image, interactive, parentEl) {
                       "uIsoValue", "uIsoColour", "uIsoSmooth", "uIsoWalls", "uInvPMatrix"]);
 
   this.gl.enable(this.gl.DEPTH_TEST);
+  this.gl.depthMask(true);
   this.gl.clearColor(0, 0, 0, 0);
   //this.gl.clearColor(this.background.red/255, this.background.green/255, this.background.blue/255, 0.0);
   this.gl.enable(this.gl.BLEND);
