@@ -346,6 +346,7 @@
     this.rotate = rotate || 0;
 
     //Calc viewport
+    // i,j is the axis,0-x,y-1,z-2
     this.i = 0;
     this.j = 1;
     if (axis == 0) this.i = 2;

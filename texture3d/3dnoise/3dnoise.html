@@ -20,7 +20,6 @@ void main()
 #version 300 es
 precision highp float;
 precision highp int;
-//precision highp sampler2DArray;
 precision highp sampler3D;
 
 out vec4 FragColor;
@@ -30,57 +29,50 @@ const int numSamples = 128;
 const vec3 LightPosition = vec3(0.25, 1.0, 3.0);
 const vec3 LightIntensity = vec3(15.0);
 const float Absorption = 1.0;
+const vec3 uBBMin = vec3(-1.0);
+const vec3 uBBMax = vec3(1.0);
+const vec4 uViewport = vec4(0, 0, 400, 400);
 
 uniform sampler3D uvolume;
-//uniform sampler2DArray uvolume;
 uniform mat4 umv;
-uniform float FocalLength;
-uniform vec2 WindowSize;
-uniform vec3 RayOrigin;
 
-const float maxDist = sqrt(2.0);
+const float maxDist = sqrt(3.0);
 const float stepSize = maxDist / float(numSamples);
 const int numLightSamples = 32;
 const float lscale = maxDist / float(numLightSamples);
 const float densityFactor = 5.0;
 
 
-bool IntersectBox(vec3 rOrigin, vec3 rDir, vec3 aabbMin, vec3 aabbMax, out float t0, out float t1)
+vec2 rayIntersectBox(vec3 rDir, vec3 rOrigin)
 {
-    vec3 invR = 1.0 / rDir;
-    vec3 tbot = invR * (aabbMin - rOrigin);
-    vec3 ttop = invR * (aabbMax - rOrigin);
-    vec3 tmin = min(ttop, tbot);
-    vec3 tmax = max(ttop, tbot);
-    vec2 t = max(tmin.xx, tmin.yz);
-    t0 = max(t.x, t.y);
-    t = min(tmax.xx, tmax.yz);
-    t1 = min(t.x, t.y);
-    return t0 <= t1;
+    vec3 invDir = 1.0 / rDir;
+    vec3 bbMinDiff = invDir * (uBBMin - rOrigin);
+    vec3 bbMaxDiff = invDir * (uBBMax - rOrigin);
+    vec3 tmin = min(bbMinDiff, bbMaxDiff);
+    vec3 tmax = max(bbMinDiff, bbMaxDiff);
+    float back = min(tmax.x, min(tmax.y, tmax.z));
+    float front = max(max(tmin.x, 0.0), max(tmin.y, tmin.z));
+    return vec2(back, front);
 }
 
 void main()
 {
-    vec3 rayDirection;
-    rayDirection.xy = 2.0 * gl_FragCoord.xy / WindowSize - 1.0;
-    rayDirection.z = -FocalLength;
-    rayDirection = (vec4(rayDirection, 0) * umv).xyz;
-
-    vec3 eyeRayOrigin = RayOrigin;
-    vec3 eyeRayDir = normalize(rayDirection);
-    vec3 aabbMin = vec3(-1.0);
-    vec3 aabbMax = vec3(1.0);
-
-    float tnear, tfar;
-    IntersectBox(eyeRayOrigin, eyeRayDir, aabbMin, aabbMax, tnear, tfar);
-    if (tnear < 0.0) tnear = 0.0;
-
-    vec3 rayStart = eyeRayOrigin + eyeRayDir * tnear;
-    vec3 rayStop = eyeRayOrigin + eyeRayDir * tfar;
-
-    // transform from object space to texture coordinate space 
-    rayStart = 0.5 * (rayStart + 1.0);
-    rayStop = 0.5 * (rayStop + 1.0);
+    vec4 ndcPos;
+    ndcPos.xy = ((2.0 * gl_FragCoord.xy) - (2.0 * uViewport.xy)) / (uViewport.zw) - 1.0;
+    ndcPos.z = (2.0 * gl_FragCoord.z - gl_DepthRange.diff) / gl_DepthRange.diff;
+    ndcPos.w = 1.0;
+    vec4 clipPos = ndcPos / gl_FragCoord.w;
+    vec3 rayDirection = normalize((transpose(umv) * clipPos).xyz);
+    vec4 camPos = -vec4(umv[3]);
+    // project matrix is identify, invert project matrix is identify
+    vec3 rayOrigin = (transpose(umv) * camPos).xyz;
+    
+    vec2 intersection = rayIntersectBox(rayDirection, rayOrigin);
+    intersection.y -= 0.000001;
+    if (intersection.x <= intersection.y) discard;
+  
+    vec3 rayStart = rayOrigin + rayDirection * intersection.y;
+    vec3 rayStop = rayOrigin + rayDirection * intersection.x;
 
     // perform the ray marching
     vec3 pos = rayStart;
@@ -89,20 +81,18 @@ void main()
     float T = 1.0;
     vec3 Lo = vec3(0.0);
 
-    //FragColor = texture(uvolume, pos);
-    //if (FragColor.x > 0.0) FragColor.a = 1.0;
-    //else FragColor.a = 0.0;
-    //return;
-
     for (int i=0; i < numSamples && travel > 0.0; ++i, pos += step, travel -= stepSize) {
         
         // lighting and absorption stuff here
         
-        float density = texture(uvolume, pos).x * densityFactor;
+        float density = texture(uvolume, pos).x;
+        //density = pow(density, densityFactor);
+        
         if (density <= 0.0);
             continue;
         
-        T *= 1.0 - density*stepSize*Absorption;
+        //T *= 1.0 - density*stepSize*Absorption;
+        T *= 1.0 - density*Absorption;
         if (T <= 0.01)
             break;
         
@@ -122,12 +112,8 @@ void main()
     }
 
     FragColor.rgb = Lo;
-    FragColor.rgba = vec3(255, 0, 0, 1.0-T);
+    T=0.5;
     FragColor.a = 1.0 - T;
-    //if (T > 0.95)
-    //    FragColor.rgba = vec4(255, 0, 0, 1.0);
-    //else 
-    //    FragColor.rgba = vec4(0, 255, 0, 1.0);
 }
 </script>
 <script id="line-vs" type="x-shader/x-vertex">
@@ -188,6 +174,8 @@ void main(void)
 <script src="./../../lib/perlin.js"></script>
 <script src="./../../lib/mqShader.js"></script>
 <script src="./../../lib/mqMath.js"></script>
+<script src="./../../lib/mqUtil.js"></script>
+<script src="./../../lib/noise3D.js"></script>
 <script src="./mqRender.js"></script>
 </head>
 <body>
@@ -198,17 +186,10 @@ void main(void)
     <button onclick="rotateZ();">rotate-z</button>
     <button onclick="rotateXY();">rotate-xy</button>   
     <script>
-        let def_width = 256;
-        let def_height = 256;
-        let def_depth = 256;
-        let def_slicex = 16;
-        let def_slicey = 16;
-        let no_def = true;
-        let width = no_def ? 400 : def_width;
-        let height = no_def ? 400 : def_height;
-        let depth = no_def ? 272 : def_depth;
-        let slicex = no_def ? 16 : def_slicex;
-        let slicey = no_def ? 17 : def_slicey;
+        let useNoise = false;
+        let width = useNoise ? 128 : 256;
+        let height = useNoise ? 128 : 256;
+        let depth = useNoise ? 128 : 256;
         let myevent = {
             loadtex: new signals.Signal()
         }
@@ -233,24 +214,11 @@ void main(void)
             dimx: width,
             dimy: height,
             dimz: depth,
-            slicex: slicex, 
-            slicey: slicey,
+            useNoise: useNoise
         });
         myevent.loadtex.add(work_render);
-
-        if (no_def) {
-            loadImage('/resource/272.jpeg', function(img) {
-                render.loadTextureArray(img, width, slicex, slicey);
-                myevent.loadtex.dispatch(slicex * slicey);
-            });
-        } else {
-            loadImage('/resource/data.jpg', function(img) {
-                render.loadTextureArray(img, width, slicex, slicey);
-                myevent.loadtex.dispatch(slicex * slicey);
-            });
-        }
                 
-        function work_render(totalFrame) {  
+        function work_render() {  
             
             render.initDrawVolume();
             
@@ -284,7 +252,15 @@ void main(void)
         function rotateZ() {
             render.rotateZ(10);
         }
-    
+        if (useNoise) {
+            myevent.loadtex.dispatch();
+        } else {
+            //loadImage('/resource/data.jpg', function(img) {
+                render.load3DTexture(null, 32);
+                myevent.loadtex.dispatch();
+            //});
+        }
+        
     </script>        
 </body>
 </html>

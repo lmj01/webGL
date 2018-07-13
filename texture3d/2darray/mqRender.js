@@ -32,7 +32,9 @@ function mqRender(gl, options) {
 	this.cube.program = mqCreateProgram(gl, this.cube.vs, this.cube.fs);
 	this.cube.vao = this.util.vaoVolume(gl);
 	this.cube.loc = {};
-	['umv', 'FocalLength', 'WindowSize', 'RayOrigin', 'uvolume'].forEach(function(name){
+	['umv', 'FocalLength', 'WindowSize', 
+		//'RayOrigin', 
+		'uvolume'].forEach(function(name){
 		self.cube.loc[name] = mqLocation(gl, self.cube.program, name);
 	})
 
@@ -73,7 +75,8 @@ mqRender.prototype.loadTextureArray = function(img, size, numx, numy) {
 	this.gl.texStorage3D(
 		this.gl.TEXTURE_2D_ARRAY,
 		Math.log2(size),
-		this.gl.RGBA8,
+		//this.gl.RGBA8,
+		this.gl.LUMINANCE,
 		size, 
 		size, 
 		numx*numy
@@ -86,7 +89,9 @@ mqRender.prototype.loadTextureArray = function(img, size, numx, numy) {
 				this.gl.TEXTURE_2D_ARRAY, 0, 
 				0, 0, j+i*numx,
 				size, size, 1,
-				this.gl.RGBA, this.gl.UNSIGNED_BYTE, pixels
+				//this.gl.RGBA, 
+				this.gl.LUMINANCE,
+				this.gl.UNSIGNED_BYTE, pixels
 			);
 		}
 	}
@@ -138,7 +143,7 @@ mqRender.prototype.DrawVolume = function() {
 	this.gl.uniformMatrix4fv(this.cube.loc['umv'], false, this.mv);
 	this.gl.uniform1f(this.cube.loc['FocalLength'], this.focalLength);
 	//this.gl.uniform3fv(this.cube.loc['RayOrigin'], new Float32Array([0, 0, 3]));
-	this.gl.uniform3fv(this.cube.loc['RayOrigin'], this.rayOrigin);
+	//this.gl.uniform3fv(this.cube.loc['RayOrigin'], this.rayOrigin);
 	
 	this.gl.drawArrays(this.cube.vao.type, 0, this.cube.vao.count);
 }

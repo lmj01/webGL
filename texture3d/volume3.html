@@ -162,8 +162,8 @@ void main(void)
         border: 1px solid red;
     }    
 </style>
-<script src="./gl-matrix.js"></script>
-<script src="./signals.js"></script>
+<script src="./../lib/gl-matrix.2.6.1.js"></script>
+<script src="./../lib/signals.js"></script>
 <script src="./auxiliary3.js"></script>
 </head>
 <body>
@@ -209,12 +209,12 @@ void main(void)
         myevent.loadtex.add(work_render);
 
         if (no_def) {
-            loadImage('/texture3d/test272.jpeg', function(img) {
+            loadImage('/resource/272.jpeg', function(img) {
                 render.loadTextureArray(img, width, slicex, slicey);
                 myevent.loadtex.dispatch(slicex * slicey);
             });
         } else {
-            loadImage('/texture3d/data.jpg', function(img) {
+            loadImage('/resource/data.jpg', function(img) {
                 render.loadTextureArray(img, width, slicex, slicey);
                 myevent.loadtex.dispatch(slicex * slicey);
             });

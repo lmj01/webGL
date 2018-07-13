@@ -23,7 +23,7 @@ function mqRender(gl, options) {
 	this.iproject = mat4.create(); // inverse projection
 	
 	// texture
-	this.texVolume = createPyroclasticVolume(128, 0,025);
+	this.texVolume = options.useNoise ? createPyroclasticVolume(128, 0,025) : null;
 	// shader
 	this.util = new mqUtil();
 	this.cube = {};
@@ -32,7 +32,7 @@ function mqRender(gl, options) {
 	this.cube.program = mqCreateProgram(gl, this.cube.vs, this.cube.fs);
 	this.cube.vao = this.util.vaoVolume(gl);
 	this.cube.loc = {};
-	['umv', 'FocalLength', 'WindowSize', 'RayOrigin', 'uvolume'].forEach(function(name){
+	['umv', 'uvolume'].forEach(function(name){
 		self.cube.loc[name] = mqLocation(gl, self.cube.program, name);
 	})
 
@@ -58,39 +58,53 @@ function mqRender(gl, options) {
 	//this.gl.enable(this.gl.CULL_FACE);
 	this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
 }
-mqRender.prototype.loadTextureArray = function(img, size, numx, numy) {
-	return;
-	var canvas = document.createElement('canvas');
-	canvas.width = size * numx;
-	canvas.height = size * numy;
-	var ctx = canvas.getContext('2d');
-	ctx.drawImage(img, 0, 0);
-	
-	this.gl.bindTexture(this.gl.TEXTURE_2D_ARRAY, this.texVolume);
-	this.gl.texParameteri(this.gl.TEXTURE_2D_ARRAY, this.gl.TEXTURE_BASE_LEVEL, 0);
-	this.gl.texParameteri(this.gl.TEXTURE_2D_ARRAY, this.gl.TEXTURE_MAX_LEVEL, Math.log2(size));
-	this.gl.texParameteri(this.gl.TEXTURE_2D_ARRAY, this.gl.TEXTURE_MAG_FILTER, this.gl.LINEAR);
-	this.gl.texParameteri(this.gl.TEXTURE_2D_ARRAY, this.gl.TEXTURE_MIN_FILTER, this.gl.LINEAR);
-	this.gl.texStorage3D(
-		this.gl.TEXTURE_2D_ARRAY,
-		Math.log2(size),
-		this.gl.RGBA8,
-		size, 
-		size, 
-		numx*numy
-	);
-	for (let i=0; i<numy; i++) {
-		for (let j=0; j<numx; j++) {
-			var imageData = ctx.getImageData(0+j*size, 0+i*size, size, size);
-			var pixels = new Uint8Array(imageData.data.buffer);
-			this.gl.texSubImage3D(
-				this.gl.TEXTURE_2D_ARRAY, 0, 
-				0, 0, j+i*numx,
-				size, size, 1,
-				this.gl.RGBA, this.gl.UNSIGNED_BYTE, pixels
-			);
+mqRender.prototype.load3DTexture = function(img, size) {
+	// var canvas = document.createElement('canvas');
+	// let numx = numy = 16;
+	// canvas.width = size * numx;
+	// canvas.height = size * numy;
+	// var ctx = canvas.getContext('2d');
+	// ctx.drawImage(img, 0, 0);
+
+	var data = new Uint8Array(size*size*size);	
+	// for (let i=0; i<numy; i++) {
+	// 	for (let j=0; j<numx; j++) {
+	// 		var imageData = ctx.getImageData(0+j*size, 0+i*size, size, size);
+	// 		let zIndex = (i * numy + j) * size * size;
+	// 		for (let ii=0; ii<size; ii++) {
+	// 			for (let jj=0; jj<size; jj++) {
+	// 				let index = ii * size + jj;					
+	// 				data[zIndex + index] = imageData.data[index*4];
+	// 			}
+	// 		}
+	// 	}
+	// }
+	for (var k = 0; k < size; ++k) {
+		for (var j = 0; j < size; ++j) {
+			for (var i = 0; i < size; ++i) {
+				data[i + j * size + k * size * size] = snoise([i, j, k]) * 256;
+			}
 		}
 	}
+
+	this.texVolume = gl.createTexture();
+	this.gl.bindTexture(this.gl.TEXTURE_3D, this.texVolume);
+	this.gl.texParameteri(this.gl.TEXTURE_3D, this.gl.TEXTURE_MAG_FILTER, this.gl.LINEAR);
+	this.gl.texParameteri(this.gl.TEXTURE_3D, this.gl.TEXTURE_MIN_FILTER, this.gl.LINEAR);
+	this.gl.texParameteri(this.gl.TEXTURE_3D, this.gl.TEXTURE_WRAP_S, this.gl.CLAMP_TO_EDGE);
+	this.gl.texParameteri(this.gl.TEXTURE_3D, this.gl.TEXTURE_WRAP_T, this.gl.CLAMP_TO_EDGE);
+	this.gl.texParameteri(this.gl.TEXTURE_3D, this.gl.TEXTURE_WRAP_R, this.gl.CLAMP_TO_EDGE);
+	this.gl.pixelStorei(this.gl.UNPACK_ALIGNMENT, 1);
+	gl.texImage3D(
+		gl.TEXTURE_3D, 
+		0, 
+		gl.LUMINANCE,
+		size,size,size, 
+		0,
+		gl.LUMINANCE,
+		gl.UNSIGNED_BYTE,
+		data
+	);	
 }
 mqRender.prototype.rayCamera = function() {
 	
@@ -114,13 +128,11 @@ mqRender.prototype.rayCamera = function() {
 mqRender.prototype.initDrawVolume = function() {		
 	this.gl.activeTexture(this.gl.TEXTURE0);
 	this.gl.bindTexture(this.gl.TEXTURE_3D, this.texVolume);
-	//this.gl.bindTexture(this.gl.TEXTURE_2D_ARRAY, this.texVolume);
 	
 	this.gl.bindVertexArray(this.cube.vao.vao);
 	this.gl.useProgram(this.cube.program);
 
 	this.gl.uniform1i(this.cube.loc['uvolume'], 0);
-	this.gl.uniform2fv(this.cube.loc['WindowSize'], new Float32Array([this.width, this.height]));
 }
 mqRender.prototype.DrawAxis = function() {
 	this.gl.bindVertexArray(this.axis.vao.vao);
@@ -138,9 +150,6 @@ mqRender.prototype.DrawVolume = function() {
 	this.gl.useProgram(this.cube.program);
 
 	this.gl.uniformMatrix4fv(this.cube.loc['umv'], false, this.mv);
-	this.gl.uniform1f(this.cube.loc['FocalLength'], this.focalLength);
-	//this.gl.uniform3fv(this.cube.loc['RayOrigin'], new Float32Array([0, 0, 3]));
-	this.gl.uniform3fv(this.cube.loc['RayOrigin'], this.rayOrigin);
 	
 	this.gl.drawArrays(this.cube.vao.type, 0, this.cube.vao.count);
 }
@@ -149,7 +158,7 @@ mqRender.prototype.draw = function() {
 	this.gl.clear(this.gl.COLOR_BUFFER_BIT 
 		//| this.gl.DEPTH_BUFFER_BIT
 	);
-	//this.gl.viewport(this.vp.x, this.vp.y, this.vp.width, this.vp.height);
+	this.gl.viewport(this.vp.x, this.vp.y, this.vp.width, this.vp.height);
 
 	this.rayCamera();	
 
