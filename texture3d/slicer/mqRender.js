@@ -6,6 +6,9 @@ function mqRender(gl, options) {
 	var self = this;
 	this.width = options.width;
 	this.height = options.height;
+	this.depth = options.depth;
+	this.dimx = options.dimx;
+	this.dimy = options.dimy;
 	this.rotate = quat.create();
 	quat.identity(this.rotate);
 
@@ -23,7 +26,7 @@ function mqRender(gl, options) {
 	this.iproject = mat4.create(); // inverse projection
 	
 	// texture
-	this.texVolume = options.useNoise ? createPyroclasticVolume(128, 0,025) : null;
+	this.texVolume = this.gl.createTexture();
 	// shader
 	this.util = new mqUtil();
 	this.cube = {};
@@ -32,7 +35,7 @@ function mqRender(gl, options) {
 	this.cube.program = mqCreateProgram(gl, this.cube.vs, this.cube.fs);
 	this.cube.vao = this.util.vaoVolume2(gl);
 	this.cube.loc = {};
-	['umv', 'uvolume'].forEach(function(name){
+	['umv', 'axis', 'slice', 'res', 'dim', 'select', 'texVolume'].forEach(function(name){
 		self.cube.loc[name] = mqLocation(gl, self.cube.program, name);
 	})
 
@@ -53,62 +56,32 @@ function mqRender(gl, options) {
 
 	this.gl.clearColor(0.2, 0.2, 0.2, 1.0);
 	//this.gl.clearColor(1, 1, 1, 0);
-	this.gl.enable(this.gl.DEPTH_TEST);
+	//this.gl.enable(this.gl.DEPTH_TEST);
 	this.gl.enable(this.gl.BLEND);
-	//this.gl.enable(this.gl.CULL_FACE);
-	this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
+    this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
+    this.gl.enable(this.gl.SCISSOR_TEST);
+
 }
-mqRender.prototype.load3DTexture = function(img, size) {
-	// var canvas = document.createElement('canvas');
-	// let numx = numy = 16;
-	// canvas.width = size * numx;
-	// canvas.height = size * numy;
-	// var ctx = canvas.getContext('2d');
-	// ctx.drawImage(img, 0, 0);
-
-	var data = new Uint8Array(size*size*size);	
-	// for (let i=0; i<numy; i++) {
-	// 	for (let j=0; j<numx; j++) {
-	// 		var imageData = ctx.getImageData(0+j*size, 0+i*size, size, size);
-	// 		let zIndex = (i * numy + j) * size * size;
-	// 		for (let ii=0; ii<size; ii++) {
-	// 			for (let jj=0; jj<size; jj++) {
-	// 				let index = ii * size + jj;					
-	// 				data[zIndex + index] = imageData.data[index*4];
-	// 			}
-	// 		}
-	// 	}
-	// }
-	for (var k = 0; k < size; ++k) {
-		for (var j = 0; j < size; ++j) {
-			for (var i = 0; i < size; ++i) {
-				data[i + j * size + k * size * size] = snoise([i, j, k]) * 256;
-			}
-		}
-	}
-
-	this.texVolume = gl.createTexture();
-	this.gl.bindTexture(this.gl.TEXTURE_3D, this.texVolume);
-	this.gl.texParameteri(this.gl.TEXTURE_3D, this.gl.TEXTURE_MAG_FILTER, this.gl.LINEAR);
-	this.gl.texParameteri(this.gl.TEXTURE_3D, this.gl.TEXTURE_MIN_FILTER, this.gl.LINEAR);
-	this.gl.texParameteri(this.gl.TEXTURE_3D, this.gl.TEXTURE_WRAP_S, this.gl.CLAMP_TO_EDGE);
-	this.gl.texParameteri(this.gl.TEXTURE_3D, this.gl.TEXTURE_WRAP_T, this.gl.CLAMP_TO_EDGE);
-	this.gl.texParameteri(this.gl.TEXTURE_3D, this.gl.TEXTURE_WRAP_R, this.gl.CLAMP_TO_EDGE);
-	this.gl.pixelStorei(this.gl.UNPACK_ALIGNMENT, 1);
-	gl.texImage3D(
-		gl.TEXTURE_3D, 
-		0, 
-		gl.LUMINANCE,
-		size,size,size, 
+mqRender.prototype.loadTextureArray = function(img, size, numx, numy) {
+	this.gl.bindTexture(this.gl.TEXTURE_2D, this.texVolume);
+	this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MAG_FILTER, this.gl.LINEAR);
+	this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.LINEAR);
+	this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.CLAMP_TO_EDGE);
+	this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.CLAMP_TO_EDGE);
+	this.gl.texImage2D(
+		this.gl.TEXTURE_2D,
 		0,
-		gl.LUMINANCE,
-		gl.UNSIGNED_BYTE,
-		data
-	);	
+		this.gl.LUMINANCE,
+		this.gl.LUMINANCE,
+		this.gl.UNSIGNED_BYTE,
+		img
+	);
 }
 mqRender.prototype.rayCamera = function() {
 	
 	mat4.identity(this.mv);
+
+	//mat4.translate(this.mv, this.mv, [-1.0, 1.0, 0]);
 
 	//mat4.targetTo(this.mv, this.eyePosition, this.targetPosition, this.upDirection);
 	
@@ -117,22 +90,18 @@ mqRender.prototype.rayCamera = function() {
 	mat4.fromQuat(rotmat, this.rotate);
 	mat4.multiply(this.mv, this.mv, rotmat);
 
-	var tmp = mat4.create();
-	mat4.transpose(tmp, this.mv);
-	vec3.transformMat4(this.rayOrigin, this.eyePosition, tmp);
-
 	mat4.perspective(this.project, this.fieldOfView, this.width / this.height, this.near, this.far);
 
 	//mat4.multiply(this.mv, this.mv, this.project);
 }
 mqRender.prototype.initDrawVolume = function() {		
 	this.gl.activeTexture(this.gl.TEXTURE0);
-	this.gl.bindTexture(this.gl.TEXTURE_3D, this.texVolume);
+	this.gl.bindTexture(this.gl.TEXTURE_2D, this.texVolume);
 	
 	this.gl.bindVertexArray(this.cube.vao.vao);
 	this.gl.useProgram(this.cube.program);
 
-	this.gl.uniform1i(this.cube.loc['uvolume'], 0);
+	this.gl.uniform1i(this.cube.loc['texVolume'], 0);
 }
 mqRender.prototype.DrawAxis = function() {
 	this.gl.bindVertexArray(this.axis.vao.vao);
@@ -145,26 +114,44 @@ mqRender.prototype.DrawAxis = function() {
 	
 	this.gl.drawArrays(this.axis.vao.type, 0, this.axis.vao.count);
 }
-mqRender.prototype.DrawVolume = function() {
+mqRender.prototype.DrawVolume = function(options) {
 	this.gl.bindVertexArray(this.cube.vao.vao);
 	this.gl.useProgram(this.cube.program);
-
-	this.gl.uniformMatrix4fv(this.cube.loc['umv'], false, this.mv);
+	
+	if (options.idx == 3) {
+		mat4.rotateX(this.mv, this.mv, 0.1);
+		//mat4.rotateY(this.mv, this.mv, 0.5);
+		//mat4.rotateZ(this.mv, this.mv, 0.5);
+		// var rotmat = mat4.create();
+		// mat4.fromQuat(rotmat, this.rotate);
+		// mat4.multiply(this.mv, this.mv, rotmat);	
+		this.gl.uniformMatrix4fv(this.cube.loc['umv'], false, this.mv);	
+	} else {
+		this.gl.uniformMatrix4fv(this.cube.loc['umv'], false, this.mv);
+	}
+	this.gl.uniform1i(this.cube.loc['axis'], options.idx);
+	this.gl.uniform3fv(this.cube.loc['slice'], new Float32Array([
+		(options.idx1-1)/(this.width-1), 
+		(options.idx2-1)/(this.height-1), 
+		(options.idx3)/(this.depth)
+	]));
+	this.gl.uniform3iv(this.cube.loc['res'], new Int32Array([this.width, this.height, this.depth]));
+	this.gl.uniform2fv(this.cube.loc['dim'], new Float32Array([this.dimx, this.dimy]));
+	this.gl.uniform2iv(this.cube.loc['select'], new Int32Array([options.idx1, options.idx2]));
 	
 	this.gl.drawArrays(this.cube.vao.type, 0, this.cube.vao.count);
 }
-mqRender.prototype.draw = function() {
+mqRender.prototype.draw = function(options) {
 	
-	this.gl.clear(this.gl.COLOR_BUFFER_BIT 
-		//| this.gl.DEPTH_BUFFER_BIT
-	);
-	this.gl.viewport(this.vp.x, this.vp.y, this.vp.width, this.vp.height);
-
+	this.gl.viewport(0, 0, this.width, this.height);
+	this.gl.scissor(0, 0, this.width, this.height);
+	this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
+	
 	this.rayCamera();	
 
-	this.DrawVolume();
+	this.DrawVolume(options);
 	
-	this.DrawAxis();
+	this.DrawAxis();	
 }
 mqRender.prototype.getScreen = function(id) {
 	let imgw = gl.drawingBufferWidth;
@@ -173,11 +160,10 @@ mqRender.prototype.getScreen = function(id) {
 	gl.readPixels(0, 0, imgw, imgh, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
 	let canvas2 = document.getElementById(id);
 	var ctx = canvas2.getContext('2d');
-	var imgData = ctx.getImageData(0, 0, 400, 400);
+	var imgData = ctx.getImageData(0, 0, imgw, imgh);
 	var data = imgData.data;
 	for (var i=0; i<imgh; i++) {
 		for (var j=0;j<imgw;j++) {
-			//var idx = (i * imgw + j) * 4;
 			var idx = (j * imgw + i) * 4;
 			data[idx+0] = pixels[idx+0];
 			data[idx+1] = pixels[idx+1];
@@ -212,3 +198,4 @@ mqRender.prototype.rotation = function(deg, axis) {
 	quat.normalize(rotation, rotation);
 	quat.multiply(this.rotate, rotation, this.rotate);
 }
+

@@ -69,7 +69,8 @@ uniform int uSamples;
 // density in a three-dimensional CT scan, allowing the visulaiztion of internal organs,
 // bones, or other structures.
 // isosurface is the important role to 3d-vis
-uniform float uDensityFactor; // 
+//uniform float uDensityFactor; // 
+const float uDensityFactor = 0.0;
 uniform float uIsoValue;
 uniform vec4 uIsoColour;
 uniform float uIsoSmooth;
@@ -234,6 +235,10 @@ void main()
     //Scale isoValue, the equal density surface value,
     float isoValue = uRange.x + uIsoValue * range;
   
+    //float volx = tex3D(pos);
+    //gl_FragColor = vec4(volx, volx, volx, 0.5);
+    //return;
+
     //Raymarch, front to back
     for (int i=0; i < maxSamples; ++i)
     {
@@ -494,6 +499,12 @@ void main()
     //slice offset coords from slice.z, inside coords unchanged (vCoord.xy)
     z = slice.z * float(res.z);
     coord = vCoord;
+  }
+  else if (axis==3) 
+  {
+    //arbitrary plane
+    z = slice.x * float(res.z);
+    coord = vec2(vCoord.x, slice.y);
   }
 
   //Get offsets to selected slice

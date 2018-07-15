@@ -178,6 +178,11 @@
         case 'z':
           addViewer(2);
           break;
+        case 'A':
+          rotate = 90;
+        case 'a':
+          addViewer(3);
+          break;
         case '|':
 //          x = 0;
 //          y += rowHeight; //this.viewers[this.viewers.length-1].viewport.height + 5; //Offset by previous height

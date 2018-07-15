@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="./../../lib/jquery-ui.1.12.1.min.css">
+<script id="vs" type="x-shader/x-vertex">
+#version 300 es
+//Texture vertex shader
+//A simple vertex shader for 2d image processing
+//Pass the vertex coords to fragment shader in vCoord
+precision highp float;
+
+layout(location = 0) in vec3 position;
+uniform mat4 umv;
+//uniform int axis;
+out vec2 vCoord;
+
+mat4 rotationMatrix(vec3 is, float angle) 
+{
+    vec3 a = normalize(is);
+    float s = sin(angle);
+    float c = cos(angle);
+    float oc = 1.0 - c;
+
+    float sx = s * a.x;
+    float sy = s * a.y;
+    float sz = s * a.z;
+    
+    float ocx = oc * a.x;
+    float ocy = oc * a.y;
+    float ocz = oc * a.z;
+    
+    float ocxx = ocx * a.x;
+    float ocxy = ocx * a.y;
+    float ocxz = ocx * a.z;
+    
+    float ocyy = ocy * a.y;
+    float ocyz = ocy * a.z;
+
+    float oczz = ocz * a.z;
+
+    return mat4(
+        vec4(ocxx+c,ocxy-sz,ocxz+sy,0),
+        vec4(ocxy+sz,ocyy+c,ocyz-sx,0),
+        vec4(ocxz-sy,ocyz+sx,oczz+c,0),
+        vec4(0,0,0,1)
+    );
+}
+void main()
+{
+    gl_Position = vec4(position, 1.0);
+    //Apply translation, rotation & scaling matrix to vertices to get coords
+    vec4 coords = umv * vec4(position.xy, 0.0, 1.0);
+    // make sure be in [0,1]
+    //if (axis == 3) {
+        //mat4 rat = rotationMatrix(vec3(0,0,1), 10.0);
+        //coords = rat * coords;
+    //}
+    vCoord = 0.5 * coords.xy + 0.5;
+}
+</script>
+<script id="fs" type="x-shader/x-fragment">
+#version 300 es
+//Texture fragment shader
+precision mediump float;
+//Uniform data
+uniform sampler2D texVolume;
+
+const float bright = 0.0;
+const float cont = 1.0;
+const float power = 1.0;
+
+uniform int axis;
+uniform vec3 slice;
+uniform ivec3 res;
+uniform vec2 dim;
+
+uniform ivec2 select;
+
+//Current coordinate
+in vec2 vCoord;
+out vec4 FragColor;
+
+void main()
+{
+  bool invert = false;
+  vec2 coord;
+  float z;
+
+  //  the select is invert color for different
+  if (int(gl_FragCoord.x) == select.x) invert = true;
+  if (int(gl_FragCoord.y) == select.y) invert = true;
+
+  if (axis==0)
+  {
+    //x-axis slice
+    //slice offset coords from vCoord.x, inside coords from (slice,vCoord.y)
+    z = vCoord.x * float(res.z);
+    coord = vec2(clamp(slice.x, 0.0, 0.999), vCoord.y);
+  }
+  else if (axis==1)
+  {
+    //y-axis slice
+    //slice offset coords from vCoord.y, inside coords from (vCoord.x,slice)
+    z = vCoord.y * float(res.z);
+    coord = vec2(vCoord.x, clamp(slice.y, 0.0, 0.999));
+  }
+  else if (axis==2)
+  {
+    //z-axis slice
+    //slice offset coords from slice.z, inside coords unchanged (vCoord.xy)
+    z = slice.z * float(res.z);
+    coord = vCoord;
+  }
+  else if (axis==3) 
+  {
+    //arbitrary plane
+    z = vCoord.y * float(res.z);
+    coord = vec2(vCoord.x, clamp(slice.y, 0.0, 0.999));
+  }
+
+  //Get offsets to selected slice
+  // the whole 2d-picture coord for some small picture
+  float xy = z/dim.x;
+  int row = int(xy);
+  //mod() function doesn't work properly on safari, use fract() instead
+  int col = int(fract(xy) * dim.x);
+  
+  // move the the certain small picture
+  coord += vec2(float(col), float(row));
+  
+  //Rescale to texture coords [0,1]
+  coord /= dim;
+
+  //Get texture value at coord and calculate final colour
+  vec4 tex = texture(texVolume, coord);
+  float lum = tex.r; //0.3 * tex.r + 0.59 * tex.g + 0.11 * tex.b;
+  lum = pow(lum, power);
+  vec4 pixelColor = vec4(lum, lum, lum, 1.0);
+  pixelColor.rgb = ((pixelColor.rgb - 0.5) * max(cont, 0.0)) + 0.5;
+  pixelColor.rgb += bright;
+
+  // make the color is very different from other
+  if (invert && false)
+  {
+    pixelColor.rgb = vec3(1.0) - pixelColor.rgb;
+    pixelColor.a = 1.0;
+  }
+  FragColor = pixelColor;
+}
+</script>
+<script id="line-vs" type="x-shader/x-vertex">
+#version 300 es
+precision highp float;
+
+layout(location = 0) in vec3 aVertexPosition;
+layout(location = 1) in vec4 aVertexColour;
+
+uniform mat4 umv;
+uniform mat4 uproject;
+uniform vec4 uColour;
+uniform float uAlpha;
+
+out vec4 vColour;
+
+void main(void)
+{
+    //gl_Position = uproject * umv * vec4(aVertexPosition, 1.0);
+    gl_Position = umv * vec4(aVertexPosition, 1.0);
+    vec4 colour = aVertexColour;
+    float alpha = 1.0;
+    if (uColour.a > 0.01) colour = uColour;
+    if (uAlpha > 0.01) alpha = uAlpha;
+    vColour = vec4(colour.rgb, colour.a * alpha);
+}
+</script>
+
+<script id="line-fs" type="x-shader/x-fragment">
+#version 300 es
+precision highp float;
+
+in vec4 vColour;
+out vec4 color;
+
+void main(void)
+{
+    color = vColour;
+}
+</script>
+<style>
+    button {
+        position: relative;
+        z-index: 5;
+    }
+    #demo1 {
+        position: absolute;
+        border: 1px solid red;
+        width: 400px;
+        height: 400px;
+    }
+    #demo2 {
+        left: 500px;
+        position: absolute;
+        border: 1px solid green;
+        width: 400px;
+        height: 400px;
+    }
+    #demo3 {
+        top:430px;
+        position:absolute;
+        border: 1px solid blue;
+        width: 400px;
+        height: 400px;
+    }    
+    #demo4 {
+        top: 430px;
+        left: 500px;
+        position: absolute;
+        border: 1px solid red;
+        width: 400px;
+        height: 400px;
+    }
+    #slider11 {
+        left: 415px;
+        position: absolute;
+        width: 10px;
+        height: 400px;
+    }
+    #slider12 {
+        left: 435px;
+        position: absolute;
+        width: 10px;
+        height: 400px;
+    }
+    #slider13 {
+        left: 455px;
+        position: absolute;
+        width: 10px;
+        height: 400px;
+    }
+    #slider21 {
+        left:915px;
+        position: absolute;
+        width: 10px;
+        height: 400px;
+    }
+    #slider22 {
+        left:935px;
+        position: absolute;
+        width: 10px;
+        height: 400px;
+    }
+    #slider23 {
+        left:955px;
+        position: absolute;
+        width: 10px;
+        height: 400px;
+    }
+    #slider31 {
+        top:430px;
+        left:415px;
+        position: absolute;
+        width: 10px;
+        height: 400px;
+    }
+    #slider32 {
+        top:430px;
+        left:435px;
+        position: absolute;
+        width: 10px;
+        height: 400px;
+    }
+    #slider33 {
+        top:430px;
+        left:455px;
+        position: absolute;
+        width: 10px;
+        height: 400px;
+    }
+    #slider41 {
+        top:430px;
+        left: 915px;
+        position: absolute;
+        width: 10px;
+        height: 400px;
+    }
+    #slider42 {
+        top:430px;
+        left: 935px;
+        position: absolute;
+        width: 10px;
+        height: 400px;
+    }
+    #slider43 {
+        top:430px;
+        left: 955px;
+        position: absolute;
+        width: 10px;
+        height: 400px;
+    }
+</style>
+<script src="./../../lib/jquery-1.10.2.js"></script>
+<script src="./../../lib/jquery-ui.1.12.1.min.js"></script>
+<script src="./../../lib/gl-matrix.2.6.1.js"></script>
+<script src="./../../lib/signals.js"></script>
+<script src="./../../lib/perlin.js"></script>
+<script src="./../../lib/mqShader.js"></script>
+<script src="./../../lib/mqMath.js"></script>
+<script src="./../../lib/mqUtil.js"></script>
+<script src="./mqRender.js"></script>
+</head>
+<body>
+    <canvas id="demo1" width="400px" height="400px"></canvas>
+    <div id="slider11"></div><div id="slider12"></div><div id="slider13"></div>
+    <canvas id="demo2" width="400px" height="400px"></canvas>
+    <!-- <div id="slider21"></div><div id="slider22"></div><div id="slider23"></div> -->
+    <canvas id="demo3" width="400px" height="400px"></canvas>
+    <!-- <div id="slider31"></div><div id="slider32"></div><div id="slider33"></div> -->
+    <canvas id="demo4" width="400px" height="400px"></canvas>
+    <div id="slider41"></div><div id="slider42"></div><div id="slider43"></div>
+    <button onclick="rotateX();">rotate-x</button>
+    <button onclick="rotateY();">rotate-y</button>
+    <button onclick="rotateZ();">rotate-z</button>
+    <button onclick="rotateXY();">rotate-xy</button>   
+    <script>
+        let idx11 = 200;
+        let idx12 = 200;
+        let idx13 = 150;
+        $('#slider11').slider({
+            min:0,
+            max:400,
+            value:idx11,
+            orientation:"vertical",
+            slide: function(event, ui) {
+                idx11 = ui.value;
+            }
+        });
+        $('#slider12').slider({
+            min:0,
+            max:400,
+            value:idx12,
+            orientation:"vertical",
+            slide:function(eventn, ui) {
+                idx12 = ui.value;
+            }
+        })
+        $('#slider13').slider({
+            min:0,
+            max:272,
+            value:idx13,
+            orientation:"vertical",
+            slide:function(eventn, ui) {
+                idx13 = ui.value;
+            }
+        })
+        // let idx21 = 0;
+        // let idx22 = 0;
+        // let idx23 = 0;
+        // $('#slider21').slider({
+        //     min:0,
+        //     max:400,
+        //     orientation:"vertical",
+        //     slide: function(event, ui) {
+        //         idx21 = ui.value;
+        //     }
+        // });
+        // $('#slider22').slider({
+        //     min:0,
+        //     max:400,
+        //     orientation:"vertical",
+        //     slide: function(event, ui) {
+        //         idx22 = ui.value;
+        //     }
+        // });
+        // $('#slider23').slider({
+        //     min:0,
+        //     max:272,
+        //     orientation:"vertical",
+        //     slide: function(event, ui) {
+        //         idx23 = ui.value;
+        //     }
+        // });        
+        // let idx31 = 0;
+        // let idx32 = 0;
+        // let idx33 = 0;
+        // $('#slider31').slider({
+        //     min:0,
+        //     max:400,
+        //     orientation:"vertical",
+        //     slide: function(event, ui) {
+        //         idx31 = ui.value;
+        //     }
+        // });
+        // $('#slider32').slider({
+        //     min:0,
+        //     max:400,
+        //     orientation:"vertical",
+        //     slide: function(event, ui) {
+        //         idx32 = ui.value;
+        //     }
+        // });
+        // $('#slider33').slider({
+        //     min:0,
+        //     max:272,
+        //     orientation:"vertical",
+        //     slide: function(event, ui) {
+        //         idx33 = ui.value;
+        //     }
+        // });        
+        let idx41 = 300;
+        let idx42 = 200;
+        let idx43 = 100;
+        $('#slider41').slider({
+            min:0,
+            max:400,
+            value:idx41,
+            orientation:"vertical",
+            slide: function(event, ui) {
+                idx41 = ui.value;
+            }
+        });
+        $('#slider42').slider({
+            min:0,
+            max:400,
+            value:idx42,
+            orientation:"vertical",
+            slide: function(event, ui) {
+                idx42 = ui.value;
+            }
+        });
+        $('#slider43').slider({
+            min:0,
+            max:272,
+            value:idx43,
+            orientation:"vertical",
+            slide: function(event, ui) {
+                idx43 = ui.value;
+            }
+        });
+        let slicex = 16;
+        let slicey = 17;
+        let size = 400;
+        let myevent = {
+            loadtex: new signals.Signal()
+        }
+
+        let canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        canvas.setAttribute("width", size+"px");
+        canvas.setAttribute("height", size+"px");
+        let gl = canvas.getContext( 'webgl2', { antialias: true } )
+        if( gl == null ) { alert( 'requires webgl2 support!' ) }
+        var render = new mqRender(gl,{
+            width:400,
+            height:400,
+            depth:272,
+            dimx:slicex,
+            dimy:slicey,
+        });
+        myevent.loadtex.add(work_render);
+        loadImage('/resource/272.jpeg', function(img) {
+            render.loadTextureArray(img, size, slicex, slicey);
+            myevent.loadtex.dispatch(slicex * slicey);
+        });     
+        function work_render(totalFrame) {  
+            
+            render.initDrawVolume();
+            
+            var degree = 0;
+            (function anonymousRender() {
+                
+                render.draw({
+                    idx:0,
+                    idx1: idx11,
+                    idx2: idx12,
+                    idx3: idx13,
+                });
+                render.getScreen('demo1');
+                render.draw({
+                    idx:1,
+                    idx1: idx11,
+                    idx2: idx12,
+                    idx3: idx13,
+                });
+                render.getScreen('demo2');
+                render.draw({
+                    idx:2,
+                    idx1: idx11,
+                    idx2: idx12,
+                    idx3: idx13,
+                });
+                render.getScreen('demo3');
+                render.draw({
+                    idx:3,
+                    idx1: idx41,
+                    idx2: idx42,
+                    idx3: idx43,
+                });
+                render.getScreen('demo4');
+
+                setTimeout( function(){
+                    requestAnimationFrame(anonymousRender);
+                    //render.rotateX(degree);
+                    //render.rotateY(degree);
+                    //render.rotateZ(degree);
+                    degree++;
+                    if (degree > 360) degree = 0;
+                }, 200);
+            })();
+        }
+        function rotateX() {
+            render.rotateX(10);
+        }
+        function rotateY() {
+            render.rotateY(10);
+        }
+        function rotateXY() {
+            render.rotateX(10);
+            render.rotateY(10);
+        }
+        function rotateZ() {
+            render.rotateZ(10);
+        }
+    </script>        
+</body>
+</html>

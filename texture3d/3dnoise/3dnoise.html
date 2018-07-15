@@ -186,7 +186,7 @@ void main(void)
     <button onclick="rotateZ();">rotate-z</button>
     <button onclick="rotateXY();">rotate-xy</button>   
     <script>
-        let useNoise = false;
+        let useNoise = true;
         let width = useNoise ? 128 : 256;
         let height = useNoise ? 128 : 256;
         let depth = useNoise ? 128 : 256;
@@ -256,7 +256,7 @@ void main(void)
             myevent.loadtex.dispatch();
         } else {
             //loadImage('/resource/data.jpg', function(img) {
-                render.load3DTexture(null, 32);
+                render.load3DTexture(null, 128);
                 myevent.loadtex.dispatch();
             //});
         }

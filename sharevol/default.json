@@ -120,7 +120,7 @@
           "contrast": 1,
           "power": 1,
           "usecolourmap": false,
-          "layout": "x|y|z",
+          "layout": "x|y|z|A",
           "zoom": 0.6683351069050206
         }
       }
