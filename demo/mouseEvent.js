@@ -16,7 +16,7 @@ function Slicer(parentEl) {
 
     this.doLayout();
 
-    this.canvas.mouse = new Mouse(this.canvas, this);
+    this.canvas.mouse = new mqMouse(this.canvas, this);
 
     this.gl = this.canvas.getContext('webgl');
 
@@ -178,7 +178,7 @@ function SliceView(slicer, x, y, axis, rotate, magnify) {
     this.div.style.width = this.viewport.width + "px";
     this.div.style.height = this.viewport.height + "px";
 
-    this.div.mouse = new Mouse(this.div, this);
+    this.div.mouse = new mqMouse(this.div, this);
 }
 SliceView.prototype.click = function(event, mouse) {
     console.log('click', event, mouse);			

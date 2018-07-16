@@ -40,14 +40,12 @@ precision highp float;
 //const vec2 slices = vec2(16.0,16.0);
 //const int maxSamples = 256;
 
-
-
 uniform sampler2D uVolume; // 2d data texture
 uniform sampler2D uTransferFunction;
 
 uniform vec3 uBBMin; // box for intersect to make qualifier for ray trace
 uniform vec3 uBBMax; 
-uniform vec3 uResolution; // for 2d data 
+uniform vec3 uResolution; // for the volume in x,y,z-axis 
 
 uniform bool uEnableColour; // control colour map
 
@@ -502,9 +500,24 @@ void main()
   }
   else if (axis==3) 
   {
-    //arbitrary plane
-    z = slice.x * float(res.z);
-    coord = vec2(vCoord.x, slice.y);
+    //x-axis slice
+    //slice offset coords from vCoord.x, inside coords from (slice,vCoord.y)
+    z = vCoord.x * float(res.z);
+    coord = vec2(clamp(slice.x, 0.0, 0.999), vCoord.y);
+  }
+  else if (axis==4)
+  {
+    //y-axis slice
+    //slice offset coords from vCoord.y, inside coords from (vCoord.x,slice)
+    z = vCoord.y * float(res.z);
+    coord = vec2(vCoord.x, clamp(slice.y, 0.0, 0.999));
+  }
+  else if (axis==5)
+  {
+    //z-axis slice
+    //slice offset coords from slice.z, inside coords unchanged (vCoord.xy)
+    z = slice.z * float(res.z);
+    coord = vCoord;
   }
 
   //Get offsets to selected slice

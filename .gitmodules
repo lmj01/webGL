@@ -1,0 +1,3 @@
+[submodule "thirdparty/isosurface"]
+	path = thirdparty/isosurface
+	url = https://github.com/lmj01/isosurface.git

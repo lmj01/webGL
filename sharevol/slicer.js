@@ -183,6 +183,16 @@
         case 'a':
           addViewer(3);
           break;
+        case 'B':
+          rotate = 90;
+        case 'b':
+          addViewer(4);
+          break;
+        case 'C':
+          rotate = 90;
+        case 'c':
+          addViewer(5);
+          break;
         case '|':
 //          x = 0;
 //          y += rowHeight; //this.viewers[this.viewers.length-1].viewport.height + 5; //Offset by previous height
@@ -316,9 +326,15 @@
 
     //Apply translation to origin, any rotation and scaling (inverse of zoom factor)
     this.webgl.modelView.identity()
+    if (idx > 2) {
     this.webgl.modelView.translate([0.5, 0.5, 0])
     this.webgl.modelView.rotate(-view.rotate, [0, 0, 1]);
-
+    } else {
+    this.webgl.modelView.translate([0.5, 0.5, 0])
+    this.webgl.modelView.rotate(160, [1, 0, 0]);
+    this.webgl.modelView.rotate(135, [0, 1, 0]);
+    this.webgl.modelView.rotate(-35, [0, 0, 1]);
+    }
     //Apply zoom and flip Y
     var scale = [1.0/2.0, -1.0/2.0, -1.0];
     if (this.flipY) scale[1] = -scale[1];
