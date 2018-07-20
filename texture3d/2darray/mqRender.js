@@ -53,12 +53,45 @@ function mqRender(gl, options) {
 	// delayed render
 	this.delaytimer = null;
 
-	this.gl.clearColor(0.2, 0.2, 0.2, 1.0);
+	//Bounding box
+	//this.box([0.0, 0.0, 0.0], [1.0, 1.0, 1.0]);
+
+	//this.gl.clearColor(0.2, 0.2, 0.2, 1.0);
 	//this.gl.clearColor(1, 1, 1, 0);
 	this.gl.enable(this.gl.DEPTH_TEST);
 	this.gl.enable(this.gl.BLEND);
 	//this.gl.enable(this.gl.CULL_FACE);
 	this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
+}
+mqRender.prototype.box = function(min,max) {
+	var vertices = new Float32Array(
+        [
+          min[0], min[1], max[2],
+          min[0], max[1], max[2],
+          max[0], max[1], max[2],
+          max[0], min[1], max[2],
+          min[0], min[1], min[2],
+          min[0], max[1], min[2],
+          max[0], max[1], min[2],
+          max[0], min[1], min[2]
+        ]);
+
+  var indices = new Uint16Array(
+        [
+          0, 1, 1, 2, 2, 3, 3, 0,
+          4, 5, 5, 6, 6, 7, 7, 4,
+          0, 4, 3, 7, 1, 5, 2, 6
+        ]
+     );
+  this.boxPositionBuffer = this.gl.createBuffer();
+  this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.boxPositionBuffer);
+  this.gl.bufferData(this.gl.ARRAY_BUFFER, vertices, this.gl.STATIC_DRAW);
+  this.boxPositionBuffer.itemSize = 3;
+
+  this.boxIndexBuffer = this.gl.createBuffer();
+  this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, this.boxIndexBuffer); 
+  this.gl.bufferData(this.gl.ELEMENT_ARRAY_BUFFER, indices, this.gl.STATIC_DRAW);
+  this.boxIndexBuffer.numItems = 24;
 }
 mqRender.prototype.loadTextureArray = function(img, size, numx, numy) {
 	var canvas = document.createElement('canvas');
@@ -136,6 +169,19 @@ mqRender.prototype.DrawAxis = function() {
 	
 	this.gl.drawArrays(this.axis.vao.type, 0, this.axis.vao.count);
 }
+mqRender.prototype.DrawBox = function() {
+  
+  this.gl.useProgram(this.axis.program);
+  this.gl.uniform1f(this.axis.loc["uAlpha"], 0.5);
+  this.gl.uniform4fv(this.axis.loc["uColour"], new Float32Array([1.0, 1.0, 1.0, 0.5]));
+
+  this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.boxPositionBuffer);
+  this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, this.boxIndexBuffer);
+  this.gl.enableVertexAttribArray(0);
+  this.gl.vertexAttribPointer(0, this.boxPositionBuffer.itemSize, this.gl.FLOAT, false, 0, 0);
+  
+  this.gl.drawElements(this.gl.LINES, this.boxIndexBuffer.numItems, this.gl.UNSIGNED_SHORT, 0);
+}
 mqRender.prototype.DrawVolume = function() {
 	this.gl.bindVertexArray(this.cube.vao.vao);
 	this.gl.useProgram(this.cube.program);
@@ -159,6 +205,8 @@ mqRender.prototype.draw = function() {
 	this.DrawVolume();
 	
 	this.DrawAxis();
+
+	//this.DrawBox();
 }
 mqRender.prototype.getScreen = function(id) {
 	let imgw = gl.drawingBufferWidth;

@@ -81,6 +81,10 @@ void main()
     float T = 1.0;
     vec3 Lo = vec3(0.0);
 
+    float volx = tex3D(pos);
+    gl_FragColor = vec4(volx, volx, volx, 0.5);
+    return;
+
     for (int i=0; i < numSamples && travel > 0.0; ++i, pos += step, travel -= stepSize) {
         
         // lighting and absorption stuff here
@@ -230,8 +234,8 @@ void main(void)
                 render.getScreen('demo2');                
                 setTimeout( function(){
                     requestAnimationFrame(anonymousRender);
-                    render.rotateX(degree);
-                    render.rotateY(degree);
+                    //render.rotateX(degree);
+                    //render.rotateY(degree);
                     //render.rotateZ(degree);
                     degree++;
                     if (degree > 360) degree = 0;

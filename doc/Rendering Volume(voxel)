@@ -1,0 +1,11 @@
+出处:https://stackoverflow.com/questions/30692494/best-practice-rendering-volume-voxel-based-data-in-webgl
+
+There are 2 major ways to represent / render 3D datasets. Rasterization and Ray-tracing. One fair rasterization approach is a surface reconstruction technique by the use of algorithms such as Marching Cubes, Dual Contouring or Dual Marching Cubes.
+
+Three.js have a Marching Cubes implementation in the examples section. You basically create polygons from your voxels for classical rasterization. It may be faster than it seems. Depending the level of detail you want to reach, the process can be fast enough to be done more than 60 times per second, for thousands of vertices. Although, unless you want to simply represent cubes (I doubt) instead of a surface, you will also need more info associated to each of your voxels rather than only voxel positions and colors.
+
+The other way is raycasting. Unless you find a really efficient raycasting algorithm, you will have serious performance hit with a naive implementation. You can try to cast rays from your camera position through your data structure, find / stop marching through when you reach a surface and project your intersection point back to screen space with the desired color. You may draw the resulting pixel in a texture buffer to map it on a full-screen quad with a simple shader.
+
+In both cases, you need more information than just colors and cubes. For example, you need at least density values at each corners of your voxels for Marching cubes or intersection normals along voxels edges (hermite data) for Dual Contouring. The same for ray-casting, you need at least some density information to figure out where the surface lies or not.
+
+One of the keys is also in how you organize the data in your structure specially for out-of-core accesses.

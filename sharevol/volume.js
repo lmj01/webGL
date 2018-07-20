@@ -525,10 +525,10 @@ Volume.prototype.drawAxis = function(alpha) {
            this.slicer.slices[1]*this.scaling[1],
            this.slicer.slices[2]*this.scaling[2]];
   }
-  this.webgl.modelView.translate(pos);
+  //this.webgl.modelView.translate(pos);
   this.webgl.setMatrices();
   this.gl.drawArrays(this.gl.LINES, 0, this.linePositionBuffer.numItems);
-  this.webgl.modelView.translate([-pos[0], -pos[1], -pos[2]]);
+  //this.webgl.modelView.translate([-pos[0], -pos[1], -pos[2]]);
 }
 
 Volume.prototype.drawBox = function(alpha) {
@@ -541,7 +541,7 @@ Volume.prototype.drawBox = function(alpha) {
   this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, this.boxIndexBuffer);
   this.gl.enableVertexAttribArray(this.lineprogram.attributes["aVertexPosition"]);
   this.gl.vertexAttribPointer(this.lineprogram.attributes["aVertexPosition"], this.boxPositionBuffer.itemSize, this.gl.FLOAT, false, 0, 0);
-    this.gl.vertexAttribPointer(this.lineprogram.attributes["aVertexColour"], 4, this.gl.UNSIGNED_BYTE, true, 0, 0);
+  this.gl.vertexAttribPointer(this.lineprogram.attributes["aVertexColour"], 4, this.gl.UNSIGNED_BYTE, true, 0, 0);
 
   this.webgl.modelView.scale(this.scaling);  //Apply scaling
   this.webgl.setMatrices();
@@ -605,7 +605,7 @@ Volume.prototype.rotateY = function(deg) {
 Volume.prototype.rotateZ = function(deg) {
   this.rotation(deg, [0,0,1]);
 }
-WebGL
+
 Volume.prototype.rotation = function(deg, axis) {
   //Quaterion rotate
   var arad = deg * Math.PI / 180.0;
