@@ -144,7 +144,8 @@ function Volume(props, image, interactive, parentEl) {
     this.gl.vertexAttribPointer(this.lineprogram.attributes["aVertexColour"], this.lineColourBuffer.itemSize, this.gl.FLOAT, false, 0, 0);
 
   // here add stl shader 
-  var defines = "#extension GL_EXT_frag_depth : enable\n";
+  //var defines = "#extension GL_EXT_frag_depth : enable\n";
+  var defines = "";
   defines += "precision highp float; const highp vec2 slices = vec2(" + this.tiles[0] + "," + this.tiles[1] + ");\n";
   defines += (IE11 ? "#define IE11\n" : "#define NOT_IE11\n");
   var maxSamples = interactive ? 1024 : 256;
@@ -166,8 +167,8 @@ function Volume(props, image, interactive, parentEl) {
   this.gl.clearColor(0, 0, 0, 0);
   //this.gl.clearColor(this.background.red/255, this.background.green/255, this.background.blue/255, 0.0);
   this.gl.enable(this.gl.BLEND);
-  this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
-  this.gl.depthFunc(this.gl.LEQUAL);
+  // this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
+  // this.gl.depthFunc(this.gl.LEQUAL);
   //this.gl.depthFunc(this.gl.GREATER);
 
   //Set default properties
@@ -354,7 +355,9 @@ Volume.prototype.draw = function(lowquality, testmode) {
   //box/axes draw fully opaque behind volume
   if (this.properties.border) this.drawBox(1.0);
   if (this.properties.axes) this.drawAxis(1.0);
-    
+  
+  this.drawSTL(0.2);
+  
   //Volume render (skip while interacting if lowpower device flag is set)
   if (!(lowquality && !this.properties.interactive)) {
     //Setup volume camera
@@ -430,8 +433,7 @@ Volume.prototype.draw = function(lowquality, testmode) {
   this.gl.clear(this.gl.DEPTH_BUFFER_BIT);
   if (this.properties.axes) this.drawAxis(0.2);
   if (this.properties.border) this.drawBox(0.2);
-   
-  this.drawSTL(0.2);
+    
 
   //Running speed test?
   if (testmode) {
@@ -560,15 +562,19 @@ Volume.prototype.drawSTL = function(alpha) {
   this.gl.enableVertexAttribArray(this.stlprogram.attributes["aVertexPosition"]);
   this.gl.vertexAttribPointer(this.stlprogram.attributes["aVertexPosition"], this.stlVertexBuffer.itemSize, this.gl.FLOAT, false, 24, 0);
  
-  //this.gl.enableVertexAttribArray(this.stlprogram.attributes["aVertexNormal"]);
-  //this.gl.vertexAttribPointer(this.stlprogram.attributes["aVertexNormal"], this.stlVertexBuffer.itemSize, this.gl.FLOAT, false, 24, 12);
- 
+  this.gl.enable(this.gl.BLEND);
+  this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
+  this.gl.depthFunc(this.gl.LEQUAL);
+  //this.gl.depthFunc(this.gl.GREATER);
+
   this.gl.vertexAttribPointer(this.stlprogram.attributes["aVertexColour"], 4, this.gl.UNSIGNED_BYTE, true, 0, 0);
   
   //this.webgl.modelView.scale(this.scaling);  //Apply scaling
   this.webgl.modelView.scale([0.01,0.01,0.01]);  //Apply scaling
   this.webgl.setMatrices();
   this.gl.drawArrays(this.gl.TRIANGLES, 0, this.stlVertexBuffer.numItems);
+
+  this.gl.disable(this.gl.BLEND);
 }
 
 Volume.prototype.timeAction = function(action, start) {

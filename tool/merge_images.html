@@ -14,7 +14,7 @@
         left: 500px;
     }
 </style>
-<script src="./jquery-1.10.2.js"></script>
+<script src="./../lib/jquery-1.10.2.js"></script>
 </head>
 <body>
     <button width="50" height="40" onclick="exportImage();">导出所有图片为一张</button>
@@ -26,9 +26,10 @@
 
         var canvas = document.getElementById('canvas');
         var ctx = canvas.getContext('2d');
-        let size = 400;
+        let size = 250;
         let num_x = 16;
-        let num_y = 17;
+        let num_y = 16;
+        let totalImage = 246;
         canvas.width = size * num_x;
         canvas.height = size * num_y;
         $('#canvas').css('width', canvas.width+'px');
@@ -36,15 +37,16 @@
 
         var allImg = [];
         var allUrl = [];
-        for (let i=0;i<num_x*num_y;i++) {
+        for (let i=0;i<totalImage;i++) {
             let name = i < 10 ? '00'+i : (i < 100 ? '0'+i : i); 
-            let url = '/tool/img/z-1'+ name +'.jpg';
+            let url = '/tool/img2/z-1'+ name +'.jpg';
             allUrl.push(url);
         }
         function exportImage() {
             var idx = 0;
             for (let i=0;i<num_y;i++) {
                 for (let j=0;j<num_x;j++) {
+                    if (idx < totalImage)
                     ctx.drawImage(allImg[idx], 0 + j * size, 0 + i * size);
                     idx++;
                 }

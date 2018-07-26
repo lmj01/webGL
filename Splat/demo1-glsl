@@ -1,0 +1,318 @@
+体绘制内部带有模型的
+/home/bob/meijie/study/webGL/Splat/cmake-build-debug/Splat
+OpenGL Version: 4.5.0 NVIDIA 384.130
+lmj---
+ray end-point program
+
+1:Volume.Vertex 
+2:(null) 
+3:Volume.Endpoints 
+4:#version 150
+#line 12
+
+in vec4 Position;
+out vec3 vPosition;
+uniform mat4 ModelviewProjection;
+
+void main()
+{
+    gl_Position = ModelviewProjection * Position;
+    vPosition = Position.xyz;
+}
+
+ 
+5:(null) 
+6:#version 150
+#line 24
+
+in vec3 vPosition;
+out vec3 FragData[2]; // 返回数组的形式,作何解?
+
+void main()
+{
+    vec3 pos = vPosition;
+
+    if (gl_FrontFacing) {
+        FragData[0] = 0.5 * (pos + 1.0);
+        FragData[1] = vec3(0);
+    } else {
+        FragData[0] = vec3(0);
+        FragData[1] = 0.5 * (pos + 1.0);
+    }
+}
+
+lmj---
+1:Volume.Quad 
+2:(null) 
+3:Volume.Lighting 
+4:#version 150
+#line 1
+
+in vec4 Position;
+out vec3 vPosition;
+
+void main()
+{
+    gl_Position = Position;
+    vPosition = Position.xyz;
+}
+
+ 
+5:(null) 
+6:#version 150
+#line 42
+
+out vec4 FragColor;
+in vec3 vPosition;
+
+uniform sampler2D RayStart;
+uniform sampler2D RayStop;
+uniform sampler3D Volume;
+uniform sampler2D Noise;
+
+uniform float StepLength = 0.01;
+uniform float Threshold = 0.45;
+
+uniform vec3 LightPosition;
+uniform vec3 DiffuseMaterial;
+uniform mat4 Modelview;
+uniform mat3 NormalMatrix;
+
+float lookup(vec3 coord)
+{
+    vec3 V = texture(Volume, coord).xyz;
+    return dot(V, V);
+}
+
+void main()
+{
+    vec2 coord = 0.5 * (vPosition.xy + 1.0); // viewport coordinate[-1,1] -> texture coordinate[0,1]
+    vec3 rayStart = texture(RayStart, coord).xyz;
+    vec3 rayStop = texture(RayStop, coord).xyz;
+
+    if (rayStart == rayStop) {
+        discard;
+        return;
+    }
+
+    vec3 ray = rayStop - rayStart;
+    float rayLength = length(ray);
+    vec3 stepVector = StepLength * ray / rayLength;
+
+    // Jitter Z to hide "wood grain" artifacts:
+    rayStart += stepVector * texture(Noise, gl_FragCoord.xy / 256).r;
+
+    vec3 pos = rayStart;
+    vec4 dst = vec4(0);
+    while (dst.a < 1 && rayLength > 0) {
+
+        float V = lookup(pos);
+        if (V > Threshold) {
+
+            // Refine the hitpoint to reduce slicing artifacts:
+            vec3 s = -stepVector * 0.5; // 反方向走半步
+            pos += s; V = lookup(pos); // 取新值
+            if (V > Threshold) s *= 0.5; else s *= -0.5; // 如果新值超过阈值,正向再走半步的一半,否则反向再走半步的一半
+            pos += s; V = lookup(pos); // 取新值
+
+            if (V > Threshold) { // 如果值大于阈值
+                // gradient vector,梯度向量,由沿着三个轴的偏导数组成,
+                float L = StepLength;
+                float E = lookup(pos + vec3(L,0,0));
+                float N = lookup(pos + vec3(0,L,0));
+                float U = lookup(pos + vec3(0,0,L));
+                vec3 normal = normalize(NormalMatrix * vec3(E - V, N - V, U - V));
+
+
+                vec3 light = LightPosition;
+
+                float df = abs(dot(normal, light));
+                vec3 color = df * DiffuseMaterial;
+
+                vec4 src = vec4(color, 1.0);
+                dst = (1.0 - dst.a) * src + dst;
+                break;
+            }
+        }
+
+        pos += stepVector;
+        rayLength -= StepLength;
+    }
+
+    FragColor = dst;
+}
+
+lmj---
+1:Wireframe.VS 
+2:Wireframe.GS 
+3:Wireframe.FS 
+4:#version 150
+#line 1
+
+in vec4 Position;
+out vec3 vPosition;
+uniform mat4 ModelviewProjection;
+
+void main()
+{
+    gl_Position = ModelviewProjection * Position;
+    vPosition = Position.xyz;
+}
+
+ 
+5:#version 150
+#line 13
+
+uniform mat4 Modelview;
+uniform mat3 NormalMatrix;
+layout(triangles) in;
+layout(triangle_strip, max_vertices = 3) out;
+in vec3 vPosition[3];
+out vec3 gFacetNormal;
+out vec3 gTriDistance;
+
+void main()
+{
+    vec3 A = vPosition[2] - vPosition[0];
+    vec3 B = vPosition[1] - vPosition[0];
+    gFacetNormal = NormalMatrix * normalize(cross(A, B));
+
+    gTriDistance = vec3(1, 0, 0);
+    gl_Position = gl_in[0].gl_Position; EmitVertex();
+
+    gTriDistance = vec3(0, 1, 0);
+    gl_Position = gl_in[1].gl_Position; EmitVertex();
+
+    gTriDistance = vec3(0, 1, 1);
+    gl_Position = gl_in[2].gl_Position; EmitVertex();
+
+    EndPrimitive();
+}
+
+ 
+6:#version 150
+#line 41
+
+out vec4 FragColor;
+in vec3 gFacetNormal;
+in vec3 glmj---
+1:Streamline.VS 
+2:Streamline.GS 
+3:Streamline.FS 
+4:#version 150
+#line 1
+
+in vec4 Position;
+out vec4 vPosition;
+uniform mat4 ModelviewProjection;
+
+void main()
+{
+    gl_Position = ModelviewProjection * Position;
+    vPosition = Position;
+}
+
+ 
+5:#version 150
+#line 13
+
+layout(points) in;
+layout(line_strip, max_vertices = 2) out;
+out float gAlpha;
+uniform mat4 ModelviewProjection;
+in vec4 vPosition[1];
+uniform sampler3D Volume;
+
+void main()
+{
+    vec3 coord = 0.5 * (vPosition[0].xyz + 1.0);
+    vec4 V = vec4(texture(Volume, coord).xyz, 0.0);
+
+    gAlpha = 0;
+    gl_Position = gl_in[0].gl_Position;
+    EmitVertex();
+
+    gAlpha = 1;
+    gl_Position = ModelviewProjection * (vPosition[0] + V);
+    EmitVertex();
+
+    EndPrimitive();
+}
+
+ 
+6:#version 150
+#line 38
+
+out vec4 FragColor;
+in float gAlpha;
+uniform float Brightness = 0.5;
+
+void main()
+{
+    FragColor = Brightness * vec4(gAlpha, 0, 0, 1);
+}
+
+lmj---
+1:Splat.VS 
+2:Splat.GS 
+3:Splat.FS 
+4:#version 150
+#line 0
+
+in vec4 Position;
+out vec2 vPosition;
+out int vInstance;
+uniform vec4 Center;
+
+void main()
+{
+    gl_Position = Position + Center;
+    vPosition = Position.xy;
+    vInstance = gl_InstanceID;
+}
+
+ 
+5:#version 150
+#line 14
+
+layout(triangles) in;
+layout(triangle_strip, max_vertices = 3) out;
+
+in int vInstance[3];
+in vec2 vPosition[3];
+out vec3 gPosition;
+
+uniform float InverseSize;
+
+void main()
+{
+    gPosition.z = 1.0 - 2.0 * vInstance[0] * InverseSize;
+    gl_Layer = int(vInstance[0]);
+
+    gPosition.xy = vPosition[0];
+    gl_Position = gl_in[0].gl_Position;
+    EmitVertex();
+
+    gPosition.xy = vPosition[1];
+    gl_Position = gl_in[1].gl_Position;
+    EmitVertex();
+
+    gPosition.xy = vPosition[2];
+    gl_Position = gl_in[2].gl_Position;
+    EmitVertex();
+
+    EndPrimitive();
+}
+
+ 
+6:#version 150
+#line 45
+
+in vec3 gPosition;
+out vec3 FragColor;
+
+uniform vec3  Color;
+uniform float InverseVariance;
+uniform 
+Process finished with exit code 0
+

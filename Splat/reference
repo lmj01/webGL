@@ -1,0 +1,13 @@
+
+http://prideout.net/blog/?tag=volume-rendering
+
+Volume Splatting Algorithm:算法直接以采样点作为代理几何,利用光线投射求取每个
+像素点对应三维纹理坐标,同时用一个近似低通滤波器代替高斯滤波器.此算法可应用于高质量
+的交互科学计算可视化.
+
+这篇文章演示了如何利用飞溅挤压一个圆形成流行现状到速度矢量的环形场
+
+drawing a cube into a pair of floating-point RGB surfaces
+
+https://developer.nvidia.com/gpugems/GPUGems3/gpugems3_ch30.html
+chapter 30. Real-Time Simulation and Rendering of 3D Fluids.

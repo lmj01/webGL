@@ -22,7 +22,8 @@ GLuint CreateProgram(const char* vsKey, const char* gsKey, const char* fsKey)
     const char* vsSource = glswGetShader(vsKey);
     const char* gsSource = glswGetShader(gsKey);
     const char* fsSource = glswGetShader(fsKey);
-
+    //PezDebugString("lmj---\n");
+    //PezDebugString("1:%s \n2:%s \n3:%s \n4:%s \n5:%s \n6:%s", vsKey, gsKey, fsKey, vsSource, gsSource, fsSource);
     const char* msg = "Can't find %s shader: '%s'.\n";
     PezCheckCondition(vsSource != 0, msg, "vertex", vsKey);
     PezCheckCondition(gsKey == 0 || gsSource != 0, msg, "geometry", gsKey);

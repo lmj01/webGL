@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<script id="vs1" type="x-shader/x-vertex">
+#version 300 es
+precision highp float;
+precision highp int;
+
+layout(location = 0) in vec3 position;
+uniform mat4 umvMatrix;
+uniform mat4 uprojectMatrix;
+out vec4 vPosition;
+void main()
+{
+    //gl_Position = uprojectMatrix * umvMatrix * vec4(position, 1.0);
+    gl_Position = umvMatrix * vec4(position, 1.0);
+    vPosition = vec4(position, 1.0);
+}
+</script>
+<script id="fs1" type="x-shader/x-fragment">
+#version 300 es
+precision highp float;
+precision highp int;
+
+in vec4 vPosition;
+out vec3 FragData[2];
+void main()
+{
+    vec3 pos = vPosition.xyz;
+    if (gl_FrontFacing) {
+        FragData[0] = 0.5 * (pos + 1.0);
+        FragData[1] = vec3(0);
+    } else {
+        FragData[0] = vec3(0);
+        FragData[1] = 0.5 * (pos + 1.0);
+    }
+}
+</script>     
+<script id="vsCube" type="x-shader/x-vertex">
+#version 300 es
+precision highp float;
+precision highp int;
+
+layout(location = 0) in vec3 position;
+uniform mat4 umvMatrix;
+uniform mat4 uprojectMatrix;
+void main()
+{
+    //gl_Position = uprojectMatrix * umvMatrix * vec4(position, 1.0);
+    gl_Position = umvMatrix * vec4(position, 1.0);
+}
+</script>
+<script id="fsCube" type="x-shader/x-fragment">
+#version 300 es
+precision highp float;
+precision highp int;
+
+out vec4 FragColor;
+void main()
+{
+    FragColor = vec4(0.5, 0.5, 0.5, 0.2);
+    //FragColor = vec4(0.5, 0, 0, 0.2);
+}
+</script>            
+<script id="vs" type="x-shader/x-vertex">
+#version 300 es
+precision highp float;
+precision highp int;
+
+layout(location = 0) in vec3 position;
+uniform mat4 umvMatrix;
+uniform mat4 uprojectMatrix;
+out vec4 vPosition;
+void main()
+{
+    //gl_Position = uprojectMatrix * umvMatrix * vec4(position, 1.0);
+    gl_Position = umvMatrix * vec4(position, 1.0);
+    vPosition = vec4(position, 1.0);
+}
+</script>
+<script id="fs" type="x-shader/x-fragment">
+#version 300 es
+precision highp float;
+precision highp int;
+precision highp sampler3D;
+precision highp sampler2D;
+
+out vec4 FragColor;
+in vec4 vPosition;
+
+uniform sampler3D uvolume;
+uniform sampler2D urayStart;
+uniform sampler2D urayStop;
+uniform mat4 umvMatrix;
+uniform mat3 unormalMatrix;
+uniform vec3 ulightPosition;
+uniform vec3 udiffuseMaterial;
+
+const float StepLength = 0.01;
+const float Threshold = 0.45;
+
+float lookup(vec3 coord)
+{
+    vec3 v = texture(uvolume, coord).xyz;
+    return dot(v, v);
+}
+
+void main()
+{
+    vec2 coord = 0.5 * (vPosition.xy + 1.0);
+    vec3 rayStart = texture(urayStart, coord).xyz;
+    vec3 rayStop = texture(urayStop, coord).xyz;
+    if (rayStart == rayStop) {
+        discard;
+        return;
+    }
+    vec3 ray = rayStop - rayStart;
+    float rayLength = length(ray);
+    vec3 stepVector = StepLength * ray / rayLength;
+
+    vec3 pos = rayStart;
+    vec4 dst = vec4(0);
+    
+    while (dst.a < 1.0 && rayLength > 0.0) {
+        float v = lookup(pos);
+        if (v > Threshold) {
+            // refine the hitpoint to reduce slicing artifacts
+            vec3 s = -stepVector * 0.5;
+            pos += s; v = lookup(pos);
+            if (v > Threshold) s *= 0.5; 
+            else s *= -0.5;
+            pos += s; v = lookup(pos);
+
+            if (v > Threshold) {
+                float L = StepLength;
+                float E = lookup(pos + vec3(L, 0, 0));
+                float N = lookup(pos + vec3(0, L, 0));
+                float U = lookup(pos + vec3(0, 0, L));
+                vec3 normal = normalize(unormalMatrix * vec3(E-v, N-v, U-v));
+                vec3 light = ulightPosition;
+
+                float df = abs(dot(normal, light));
+                vec3 color = df * udiffuseMaterial;
+
+                vec4 src = vec4(color, 1.0);
+                dst = (1.0 - dst.a) * src + dst;
+                break;
+            }
+        }
+        pos += stepVector;
+        rayLength -= StepLength;
+    }
+    FragColor = dst;
+    //FragColor = texture(uvolume, pos);
+    //FragColor = vec4(0.5, 0, 0, 0.2);
+}
+</script>
+<script id="line-vs" type="x-shader/x-vertex">
+#version 300 es
+precision highp float;
+
+layout(location = 0) in vec3 aVertexPosition;
+layout(location = 1) in vec4 aVertexColour;
+
+uniform mat4 umvMatrix;
+uniform mat4 uprojectMatrix;
+out vec4 vColour;
+
+void main(void)
+{
+    //gl_Position = uprojectMatrix * umvMatrix * vec4(aVertexPosition, 1.0);
+    gl_Position = umvMatrix * vec4(aVertexPosition, 1.0);
+    //gl_Position = vec4(aVertexPosition, 1.0);
+    vColour = aVertexColour;
+}
+</script>
+
+<script id="line-fs" type="x-shader/x-fragment">
+#version 300 es
+precision highp float;
+
+in vec4 vColour;
+out vec4 color;
+
+void main(void)
+{
+    color = vColour;
+}
+</script>
+<style>
+    button {
+        position: relative;
+        z-index: 5;
+    }
+    #demo {
+        position: absolute;
+        border: 1px solid red;        
+    }    
+</style>
+<script src="./../lib/signals.js"></script>
+<script src="./../lib/gl-matrix.2.6.1.js"></script>
+<script src="./../lib/mqShader.js"></script>
+<script src="./../lib/mqIO.js"></script>
+</head>
+<body>
+    <canvas id="demo"></canvas>
+    <button onclick="rotateXAxis();">rotate-x-axis</button>
+    <button onclick="rotateYAxis();">rotate-y-axis</button>
+    <button onclick="rotateZAxis();">rotate-z-axis</button>
+    <br />
+    <button onclick="translateXPositive();">x-plus</button>
+    <button onclick="translateXNegtive();">x-minus</button>
+    <button onclick="translateYPositive();">y-plus</button>
+    <button onclick="translateYNegtive();">y-minus</button>
+    <button onclick="translateZPositive();">z-plus</button>
+    <button onclick="translateZNegtive();">z-minus</button>
+    <br />    
+    <script>
+
+        let width = 256;
+        let height = 256;
+        let depth = 178;
+        let myevent = {
+            loadtex: new signals.Signal()
+        }
+        let canvas = document.getElementById('demo');
+        let canvasWidth = 512;//window.innerWidth;
+        let canvasHeight = 512;//window.innerHeight;
+        canvas.width = canvasWidth;
+        canvas.height = canvasHeight;
+        canvas.setAttribute("width", canvasWidth);
+        canvas.setAttribute("Height", canvasHeight);
+        let gl = canvas.getContext( 'webgl2', { antialias: true } )
+        if( gl == null ) { alert( 'requires webgl2 support!' ) }
+
+        let modelTranslate = vec3.create();
+        let modelRotate = quat.create();
+        let modelScale = vec3.create();
+        let modelMatrix = mat4.create();
+        let viewMatrix = mat4.create();
+        let normalMatrix = mat3.create();
+        let projectMatrix = mat4.create();
+        let mvMatrix = mat4.create();
+        let mvpMatrix = mat4.create();        
+
+        let quadShader = {};
+        let cubeShader = {};
+        let axisShader = {};
+        function initWebGL() {
+
+            let eyePosition = vec3.fromValues(0,20,250);
+            let targetPosition = vec3.fromValues(0,0,0);
+            let upDirection = vec3.fromValues(0, 1, 0);
+            // if you want a matrix that actually makes an object look at another object
+            //mat4.targetTo(viewMatrix, eyePosition, targetPosition, upDirection);
+            //
+            mat4.lookAt(viewMatrix, eyePosition, targetPosition, upDirection);
+
+            let fieldOfView = 0.78;//45-degree
+            let nearPlane = 1.0;
+            let farPlane = 10000.0;
+            mat4.perspective(projectMatrix, fieldOfView, 1, nearPlane, farPlane);
+            //console.log(projectMatrix);
+
+            cubeShader.vs = mqCreateShader(gl, getShaderById('vs1'), gl.VERTEX_SHADER);
+            cubeShader.fs = mqCreateShader(gl, getShaderById('fs1'), gl.FRAGMENT_SHADER);
+            cubeShader.program = mqCreateProgram(gl, cubeShader.vs, cubeShader.fs);
+            cubeShader.vsCube = mqCreateShader(gl, getShaderById('vsCube'), gl.VERTEX_SHADER);
+            cubeShader.fsCube = mqCreateShader(gl, getShaderById('fsCube'), gl.FRAGMENT_SHADER);
+            cubeShader.cubeProgram = mqCreateProgram(gl, cubeShader.vsCube, cubeShader.fsCube);
+            if (true) {
+                cubeShader.fbo = gl.createFramebuffer();
+                gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, cubeShader.fbo);
+                cubeShader.texStart = gl.createTexture();
+                if (true) {
+                    gl.bindTexture(gl.TEXTURE_2D, cubeShader.texStart);
+                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+                    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, canvasWidth, canvasHeight, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+                    let colorbuf = gl.createRenderbuffer(); 
+                    gl.bindRenderbuffer(gl.RENDERBUFFER, colorbuf);
+                    gl.framebufferTexture2D(gl.DRAW_FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, cubeShader.texStart, 0);
+                    gl.bindRenderbuffer(gl.RENDERBUFFER, null);
+                }    
+                cubeShader.texStop = gl.createTexture();
+                if (true) {
+                    gl.bindTexture(gl.TEXTURE_2D, cubeShader.texStop);
+                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+                    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, canvasWidth, canvasHeight, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+                    let colorbuf = gl.createRenderbuffer(); 
+                    gl.bindRenderbuffer(gl.RENDERBUFFER, colorbuf);
+                    gl.framebufferTexture2D(gl.DRAW_FRAMEBUFFER, gl.COLOR_ATTACHMENT1, gl.TEXTURE_2D, cubeShader.texStop, 0);
+                    gl.bindRenderbuffer(gl.RENDERBUFFER, null);
+                }    
+                var status = gl.checkFramebufferStatus(gl.DRAW_FRAMEBUFFER);
+                console.log('framebuffer', status, status.toString(16), gl.FRAMEBUFFER_COMPLETE);
+                gl.clearColor(0, 0, 0, 0);
+                gl.clear(gl.COLOR_BUFFER_BIT);
+                gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, null);
+
+                cubeShader.vao = gl.createVertexArray();
+                gl.bindVertexArray(cubeShader.vao);
+
+                let vbo = gl.createBuffer();
+                gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+                var cubePositions = [
+                    -1.0, -1.0, -1.0,
+                    -1.0, -1.0,  1.0,
+                    -1.0,  1.0, -1.0,
+                    -1.0,  1.0,  1.0,
+                     1.0, -1.0, -1.0,
+                     1.0, -1.0,  1.0,
+                     1.0,  1.0, -1.0,
+                     1.0,  1.0,  1.0,
+                ];
+                gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(cubePositions), gl.STATIC_DRAW);
+
+                let vboIdx = gl.createBuffer();
+                gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, vboIdx);
+                var cubeIndices = [
+                    7,3,1, 1,5,7, // z+
+                    0,2,6, 6,4,0, // z-
+                    6,2,3, 3,7,6, // y+
+                    1,0,4, 4,5,1, // y-
+                    3,2,0, 0,1,3, // x-
+                    4,6,7, 7,5,4, // x+
+                ];
+                gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint8Array(cubeIndices), gl.STATIC_DRAW);
+
+                gl.enableVertexAttribArray(0);
+                gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+                gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+                gl.bindBuffer(gl.ARRAY_BUFFER, null);
+
+                gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, vboIdx);
+
+                cubeShader.type = gl.TRIANGLES;
+                cubeShader.count = 36;
+                gl.bindVertexArray(null);
+            }
+            cubeShader.loc = {};
+            ['umvMatrix', 'uprojectMatrix'].forEach(function(name){
+                cubeShader.loc[name] = mqLocation(gl, cubeShader.program, name);
+            })
+            cubeShader.locCube = {};
+            ['umvMatrix', 'uprojectMatrix'].forEach(function(name){
+                cubeShader.locCube[name] = mqLocation(gl, cubeShader.cubeProgram, name);
+            })
+
+
+            quadShader.vs = mqCreateShader(gl, getShaderById('vs'), gl.VERTEX_SHADER);
+            quadShader.fs = mqCreateShader(gl, getShaderById('fs'), gl.FRAGMENT_SHADER);
+            quadShader.program = mqCreateProgram(gl, quadShader.vs, quadShader.fs);
+            if (true) {
+                quadShader.vao = gl.createVertexArray();
+                gl.bindVertexArray(quadShader.vao);
+
+                let vbo = gl.createBuffer();
+                gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+                var quadPositions = [
+                    -1, -1,
+                     1, -1,
+                    -1,  1,
+                     1,  1,
+                ];
+                gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(quadPositions), gl.STATIC_DRAW);
+
+                gl.enableVertexAttribArray(0);
+                gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+                gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+                gl.bindBuffer(gl.ARRAY_BUFFER, null);
+
+                quadShader.type = gl.TRIANGLE_STRIP;
+                quadShader.count = 4;
+                gl.bindVertexArray(null);
+            }
+            quadShader.loc = {};
+            ['umvMatrix', 'unormalMatrix', 'ulightPosition', 'udiffuseMaterial', 'uvolume', 'urayStart', 'urayStop'].forEach(function(name){
+                quadShader.loc[name] = mqLocation(gl, quadShader.program, name);
+            })
+
+            axisShader.vs = mqCreateShader(gl, getShaderById('line-vs'), gl.VERTEX_SHADER);
+            axisShader.fs = mqCreateShader(gl, getShaderById('line-fs'), gl.FRAGMENT_SHADER);
+            axisShader.program = mqCreateProgram(gl, axisShader.vs, axisShader.fs);
+            if (true) {
+                axisShader.vao = gl.createVertexArray();
+                gl.bindVertexArray(axisShader.vao);
+                var axisPositions = [
+                    -1.0,  0.0,  0.0,
+                    1.0,  0.0,  0.0,
+                    0.0, -1.0,  0.0, 
+                    0.0,  1.0,  0.0, 
+                    0.0,  0.0, -1.0, 
+                    0.0,  0.0,  1.0
+                ];
+                var posbuffer = mqBufferData(gl, new Float32Array(axisPositions), gl.STATIC_DRAW);
+                var axisColours =  [
+                    1.0, 0.0, 0.0, 1.0,
+                    1.0, 0.0, 0.0, 1.0,
+                    0.0, 1.0, 0.0, 1.0,
+                    0.0, 1.0, 0.0, 1.0,
+                    0.0, 0.0, 1.0, 1.0,
+                    0.0, 0.0, 1.0, 1.0
+                ];	
+                var colourbuf = mqBufferData(gl, new Float32Array(axisColours), gl.STATIC_DRAW);
+
+                gl.enableVertexAttribArray(0);
+                gl.bindBuffer(gl.ARRAY_BUFFER, posbuffer);
+                gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+                gl.bindBuffer(gl.ARRAY_BUFFER, null);
+
+                gl.enableVertexAttribArray(1);
+                gl.bindBuffer(gl.ARRAY_BUFFER, colourbuf);
+                gl.vertexAttribPointer(1, 4, gl.FLOAT, false, 0, 0);
+                gl.bindBuffer(gl.ARRAY_BUFFER, null);
+                axisShader.type = gl.LINES;
+                axisShader.count = 6;
+                gl.bindVertexArray(null);
+            }
+            axisShader.loc = {};
+            ['umvMatrix', 'uprojectMatrix'].forEach(function(name){
+                axisShader.loc[name] = mqLocation(gl, axisShader.program, name);
+            })            
+
+            gl.clearColor(0.2, 0.2, 0.2, 1.0);
+            gl.enable(gl.DEPTH_TEST);
+            gl.enable(gl.BLEND);
+            //gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+        }
+        function updateTransformation() {
+
+            mat4.identity(modelMatrix);
+
+            mat4.fromTranslation(modelMatrix, modelTranslate);
+
+            updateRotation(degree, rotateType);
+            var rotmat = mat4.create();
+            mat4.fromQuat(rotmat, modelRotate);
+            mat4.multiply(modelMatrix, modelMatrix, rotmat);
+
+            
+            mat4.multiply(mvMatrix, mvMatrix, modelMatrix);
+
+            let tmp = mat4.create();
+            mat4.transpose(tmp, mvMatrix);
+            mat3.fromMat4(normalMatrix, tmp);
+
+            //mat4.multiply(mvpMatrix, mvpMatrix, mvMatrix);            
+        }
+        function translateXPositive() {
+            modelTranslate[0] += 0.1;
+            console.log('translate', modelTranslate);
+        }
+        function translateXNegtive() {
+            modelTranslate[0] -= 0.1;
+            console.log('translate', modelTranslate);
+        }
+        function translateYPositive() {
+            modelTranslate[1] += 0.1;
+            console.log('translate', modelTranslate);
+        }
+        function translateYNegtive() {
+            modelTranslate[1] -= 0.1;
+            console.log('translate', modelTranslate);
+        }
+        function translateZPositive() {
+            modelTranslate[2] += 0.1;
+            console.log('translate', modelTranslate);
+        }
+        function translateZNegtive() {
+            modelTranslate[2] -= 0.1;
+            console.log('translate', modelTranslate);
+        }
+        function rotateXAxis() {
+            rotateType = 0;
+        }
+        function rotateYAxis() {
+            rotateType = 1;
+        }
+        function rotateZAxis() {
+            rotateType = 2;
+        }
+        function updateRotation(deg, type) {
+            // type 0-x,1-y,2-z            
+            // quaterion rotate
+            var rad = deg * Math.PI / 180.0;
+            var rotation = quat.create();
+            if (type == 0)
+                quat.setAxisAngle(rotation, [1,0,0], rad);
+            else if (type == 1)
+                quat.setAxisAngle(rotation, [0,1,0], rad);
+            else 
+                quat.setAxisAngle(rotation, [0,0,1], rad);
+            quat.normalize(rotation, rotation);
+            quat.multiply(modelRotate, rotation, modelRotate);
+        }
+        let degree = 0;
+        let rotateType = 1;
+        function drawWebGL() {
+            // update
+            updateTransformation();
+            // update the ray start and stop surface texture
+            gl.useProgram(cubeShader.program);
+            gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, cubeShader.fbo);
+            gl.enable(gl.BLEND);
+            var drawBuffers = new Array(2);
+            drawBuffers[0] = gl.COLOR_ATTACHMENT0; 
+            drawBuffers[1] = gl.COLOR_ATTACHMENT1; 
+            gl.drawBuffers(drawBuffers);
+            gl.clearColor(0, 0, 0, 0);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+            gl.bindVertexArray(cubeShader.vao);
+            gl.enable(gl.SCISSOR_TEST);
+            gl.drawElements(cubeShader.type, cubeShader.count, gl.UNSIGNED_BYTE, 0);
+            gl.disable(gl.SCISSOR_TEST);
+            gl.disable(gl.BLEND);
+            gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, null);
+            
+            gl.clearColor(0.2, 0.2, 0.2, 1.0);
+            gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+            
+            // volume
+            gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_3D, texTeapot);
+            gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, cubeShader.texStart);
+            gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, cubeShader.texStop);
+
+            gl.useProgram(quadShader.program);
+            gl.bindVertexArray(quadShader.vao);
+            gl.uniformMatrix4fv(quadShader.loc['umvMatrix'], false, mvMatrix);
+            gl.uniformMatrix3fv(quadShader.loc['unormalMatrix'], false, normalMatrix);
+            gl.uniform3f(quadShader.loc['ulightPosition'], 0.25, 0.25, 1);
+            gl.uniform3f(quadShader.loc['udiffuseMaterial'], 1, 1, 0.5);
+            gl.uniform1i(quadShader.loc['uvolume'], 0);
+            gl.uniform1i(quadShader.loc['urayStart'], 1);
+            gl.uniform1i(quadShader.loc['urayStop'], 2);
+
+            gl.drawArrays(quadShader.type, 0, quadShader.count);            
+            // axis
+            gl.useProgram(axisShader.program);
+            gl.bindVertexArray(axisShader.vao);                    
+            gl.uniformMatrix4fv(axisShader.loc['umvMatrix'], false, mvMatrix);
+            gl.uniformMatrix4fv(axisShader.loc['uprojectMatrix'], false, projectMatrix);            
+            gl.drawArrays(axisShader.type, 0, axisShader.count);
+            // 
+            gl.useProgram(cubeShader.cubeProgram);
+            gl.bindVertexArray(cubeShader.vao);                    
+            gl.uniformMatrix4fv(cubeShader.locCube['umvMatrix'], false, mvMatrix);
+            gl.uniformMatrix4fv(cubeShader.locCube['uprojectMatrix'], false, projectMatrix);            
+            gl.drawElements(cubeShader.type, cubeShader.count, gl.UNSIGNED_BYTE, 0);
+            // loop
+            setTimeout( function() {
+                requestAnimationFrame(drawWebGL);
+                degree++;
+                //console.log('degree', degree);
+                if (degree > 360) degree = 0;
+            }, 500);
+        }
+
+        let texTeapot = gl.createTexture();
+        myevent.loadtex.add(work_render);
+        loadRawData('/resource/teapot.raw', function(buf) {
+            //console.log('teapot.raw buffer', buf);
+            gl.bindTexture(gl.TEXTURE_3D, texTeapot);
+            gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+            gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+            gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+            gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+            gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_R, gl.CLAMP_TO_EDGE);
+            gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+            gl.texImage3D(
+                gl.TEXTURE_3D, 
+                0, 
+                gl.LUMINANCE,
+                width, height, depth, 
+                0,
+                gl.LUMINANCE,
+                gl.UNSIGNED_BYTE,
+                buf
+            );
+            myevent.loadtex.dispatch();
+        })
+                
+        function work_render() { 
+            initWebGL();
+
+            drawWebGL();
+        }
+    </script>        
+</body>
+</html>

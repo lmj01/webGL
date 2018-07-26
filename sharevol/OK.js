@@ -640,8 +640,8 @@ function ajaxPost(url, params, callback, progress, headers)
 
     // Try to grab the standard context. If it fails, fallback to experimental.
     try {
-      this.gl = canvas.getContext("webgl", options) || canvas.getContext("experimental-webgl", options);
-      //this.gl = canvas.getContext("webgl2", options);
+      //this.gl = canvas.getContext("webgl", options) || canvas.getContext("experimental-webgl", options);
+      this.gl = canvas.getContext("webgl2", options);
     } catch (e) {
       OK.debug("detectGL exception: " + e);
       throw "No context"

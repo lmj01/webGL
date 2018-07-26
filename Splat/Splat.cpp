@@ -28,8 +28,10 @@ const char* PezInitialize(int width, int height)
     QuadVao = CreateQuad();
     CubeVao = CreateCube();
     RayEndpointsProgram = CreateProgram("Volume.Vertex", 0, "Volume.Endpoints");
-    //RaycastProgram = CreateProgram("Volume.Quad", 0, "Volume.Lighting");
-    RaycastProgram = CreateProgram("Volume.Quad", 0, "Volume.Semitransparent");
+    if (false)
+        RaycastProgram = CreateProgram("Volume.Quad", 0, "Volume.Lighting");
+    else
+        RaycastProgram = CreateProgram("Volume.Quad", 0, "Volume.Semitransparent");
     WireframeProgram = CreateProgram("Wireframe.VS", "Wireframe.GS", "Wireframe.FS");
     StreamlineProgram = CreateProgram("Streamline.VS", "Streamline.GS", "Streamline.FS");
     RayEndPointsSurface = CreateSurface(width, height, 3, 2);
@@ -52,29 +54,29 @@ void PezRender(GLuint windowFbo)
     glActiveTexture(GL_TEXTURE2); glBindTexture(GL_TEXTURE_3D, 0);
 
     // Find screen-space AABB for scissoring:
-    const float M = std::numeric_limits<float>::max();
-    Point3 minCorner(M, M, 0);
-    Point3 maxCorner(-M, -M, 0);
-    for (int cornerIndex = 0; cornerIndex < 8; cornerIndex++) {
-        Point3 corner(
-            (cornerIndex & 0x1) ? -1.0f : +1.0f,
-            (cornerIndex & 0x2) ? -1.0f : +1.0f,
-            (cornerIndex & 0x4) ? -1.0f : +1.0f);
-
-        Vector4 v = ProjectionMatrix * ModelviewMatrix * corner;
-        Point3 p = perspective(v);
-        minCorner = minPerElem(p, minCorner);
-        maxCorner = maxPerElem(p, maxCorner);
-    }
-    minCorner += Vector3(1.0f, 1.0f, 0);
-    maxCorner += Vector3(1.0f, 1.0f, 0);
-    Vector3 viewport(PEZ_VIEWPORT_WIDTH / 2, PEZ_VIEWPORT_HEIGHT / 2, 1.0f);
-    minCorner = scale(minCorner, viewport);
-    maxCorner = scale(maxCorner, viewport);
-    Vector3 extent = maxCorner - minCorner;
-    glScissor(
-        (GLint) minCorner.getX(), (GLint) minCorner.getY(),
-        (GLsizei) extent.getX(), (GLsizei) extent.getY());
+//    const float M = std::numeric_limits<float>::max();
+//    Point3 minCorner(M, M, 0);
+//    Point3 maxCorner(-M, -M, 0);
+//    for (int cornerIndex = 0; cornerIndex < 8; cornerIndex++) {
+//        Point3 corner(
+//            (cornerIndex & 0x1) ? -1.0f : +1.0f,
+//            (cornerIndex & 0x2) ? -1.0f : +1.0f,
+//            (cornerIndex & 0x4) ? -1.0f : +1.0f);
+//
+//        Vector4 v = ProjectionMatrix * ModelviewMatrix * corner;
+//        Point3 p = perspective(v);
+//        minCorner = minPerElem(p, minCorner);
+//        maxCorner = maxPerElem(p, maxCorner);
+//    }
+//    minCorner += Vector3(1.0f, 1.0f, 0);
+//    maxCorner += Vector3(1.0f, 1.0f, 0);
+//    Vector3 viewport(PEZ_VIEWPORT_WIDTH / 2, PEZ_VIEWPORT_HEIGHT / 2, 1.0f);
+//    minCorner = scale(minCorner, viewport);
+//    maxCorner = scale(maxCorner, viewport);
+//    Vector3 extent = maxCorner - minCorner;
+//    glScissor(
+//        (GLint) minCorner.getX(), (GLint) minCorner.getY(),
+//        (GLsizei) extent.getX(), (GLsizei) extent.getY());
 
     // Update the ray start & stop surfaces:
     BindProgram(RayEndpointsProgram);
@@ -104,11 +106,11 @@ void PezRender(GLuint windowFbo)
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
     // Draw the point grid:
-    glEnable(GL_BLEND);
-    BindProgram(StreamlineProgram);
-    glBindVertexArray(GridVao);
-    glDrawArrays(GL_POINTS, 0, GridDensity * GridDensity * GridDensity);
-    glDisable(GL_BLEND);
+//    glEnable(GL_BLEND);
+//    BindProgram(StreamlineProgram);
+//    glBindVertexArray(GridVao);
+//    glDrawArrays(GL_POINTS, 0, GridDensity * GridDensity * GridDensity);
+//    glDisable(GL_BLEND);
 
     // Draw the cube:
     if (false) {

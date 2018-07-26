@@ -1,0 +1,50 @@
+Isosurfaces in GLSL
+To render an isosurface in GLSL, you'll need:
+* a fast graphics card
+* ps 3.0
+
+The basic algorithm is simple:
+
+For each pixel
+  Step along ray until surafce is hit
+  Find normal
+  Light and output colour
+
+
+There are two complications though. Firstly when you ray march, you need to step a certain amount along the ray. Of course when you step, you may go through the surface, not exactly hit it. The smaller the step, the less this is important but the more compute power is required. The solution is a root finder. Essentially a root finder is required (eg secant, newton etc) so the steop along the ray is acceptably large (for performance) but a close enough approximation to the surface can be found (for visual integrity). When the ray passes through the surface a root finder is used to find the EXACT intersection.
+
+Here is a very simple root finder function in glsl:
+
+float rootfind(in float a,in float b,in vec3 eye,in vec3 raydirection){
+float exact;
+  for(int i=0;i<9;i++){
+    exact=(b+a)/2.0;
+    if ( func(eye+exact*raydirection)<0.0 ) b=exact;
+    else a=exact;
+  }
+  return exact;
+}
+
+In the above example the function "func" is the isosurface we ar trying to intersect.
+
+Here the algorithm is simple and tiny. a and b are parametric values for points either side of the exact intersection (you have these from ray marching). The rootfinder iterates a fixed number of times. Each time, the exact answer is approximated by the value half way between the previous two best guesses (initially a and b) which are an upper bound and a lower bound of the exact value. If the function value at "exact" is negative we must make the lower bound (b) equal to "exact", if its positive we update the upper bound instead because the intersection is when the function is equal to 0.
+
+This is inefficient but its the simplest root finder to understand and can be coded very small.
+
+So assuming we find the exact intersection using this method, mow what is the Normal to the surface? The normal is the rate of change of the function in x,y and z. We already have the value of the function at one point (the intersection point). So we need to call the function three more times, offset in each of x,y and z, find the differences and , optionally, normalise the results.
+
+Here is a simple function in glsl to find a normal of an isosurface:
+
+vec3 isonormal (in vec3 v, in float val)
+{
+  return normalize(vec3(val-func( vec3(v.x+.01, v.y, v.z) ),
+                        val-func( vec3(v.x, v.y+.01, v.z) ),
+                        val-func( vec3(v.x, v.y, v.z+.01) ) ) );
+}
+
+
+The function above takes the intersection point and the value of "func" at this intersection point as input and returns the normalised normal as a vec3. Notice how a small delta is added to each of x, y and z for the intersection point to get a new position in space. e.g.
+
+val-func( vec3(v.x+.01, v.y, v.z) )
+
+is a single float representing the change in "func" between the intersection point a a new point just a little to its right in x.

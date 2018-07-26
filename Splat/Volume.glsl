@@ -1,6 +1,6 @@
 
 -- Quad
-
+// quad, the viewport vertex data that description
 in vec4 Position;
 out vec3 vPosition;
 
@@ -11,7 +11,7 @@ void main()
 }
 
 -- Vertex
-
+//
 in vec4 Position;
 out vec3 vPosition;
 uniform mat4 ModelviewProjection;
