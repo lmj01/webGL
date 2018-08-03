@@ -356,7 +356,7 @@ Volume.prototype.draw = function(lowquality, testmode) {
   if (this.properties.border) this.drawBox(1.0);
   if (this.properties.axes) this.drawAxis(1.0);
   
-  this.drawSTL(0.2);
+  //this.drawSTL(0.2);
   
   //Volume render (skip while interacting if lowpower device flag is set)
   if (!(lowquality && !this.properties.interactive)) {
@@ -433,7 +433,8 @@ Volume.prototype.draw = function(lowquality, testmode) {
   this.gl.clear(this.gl.DEPTH_BUFFER_BIT);
   if (this.properties.axes) this.drawAxis(0.2);
   if (this.properties.border) this.drawBox(0.2);
-    
+
+  this.drawSTL(0.2);
 
   //Running speed test?
   if (testmode) {

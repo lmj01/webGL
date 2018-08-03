@@ -26,10 +26,10 @@
 
         var canvas = document.getElementById('canvas');
         var ctx = canvas.getContext('2d');
-        let size = 250;
+        let size = 400;
         let num_x = 16;
-        let num_y = 16;
-        let totalImage = 246;
+        let num_y = 17;
+        let totalImage = 272;
         canvas.width = size * num_x;
         canvas.height = size * num_y;
         $('#canvas').css('width', canvas.width+'px');
@@ -39,7 +39,7 @@
         var allUrl = [];
         for (let i=0;i<totalImage;i++) {
             let name = i < 10 ? '00'+i : (i < 100 ? '0'+i : i); 
-            let url = '/tool/img2/z-1'+ name +'.jpg';
+            let url = '/resource/img/img272/z-1'+ name +'.jpg';
             allUrl.push(url);
         }
         function exportImage() {

@@ -1,0 +1,46 @@
+<!doctype html>
+<html>
+	<head>
+		<title>gzip page test</title>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+		<style>
+
+		</style>
+		<!-- <link rel="stylesheet" type="text/css" href="./styles.css"> -->
+	</head>
+
+	<body>
+    <textarea id="log" rows="20" cols="50"></textarea>
+  <script type="text/javascript" src="./../lib/mqIO.js"></script>
+  <script type="text/javascript" src="./../lib/gunzip.min.js"></script>
+	<script>
+    let log = document.getElementById('log');
+    loadRawData(
+      //'/resource/foot.raw.gz', 
+      '/tool/280.raw.gz', 
+      function(buf, size) {
+      
+      let msg = null;
+      msg = "message:\n";
+      console.log('lmj', typeof buf);
+      msg += '\n' + typeof buf;
+      console.log('lmj', buf instanceof Array);
+      msg += '\n' + (buf instanceof ArrayBuffer);
+      console.log('lmj', buf, size);
+      msg += '\n' + size;
+      let t1 = new Date().getTime();
+      var gunzip = new Zlib.Gunzip(buf);
+      var origin =  gunzip.decompress();
+      console.log('lmj', origin instanceof Array);
+      console.log('lmj', origin instanceof ArrayBuffer);
+      console.log('lmj', 'cost time is ', (new Date().getTime() - t1)/1000.0);
+      msg += '\ncost time is ' + (new Date().getTime() - t1)/1000.0;
+      console.log('lmj', origin, origin.length);
+      msg += '\ndecompress size is ' + origin.length;
+      log.innerText = msg;
+      
+    }, true);
+	</script>
+	</body>
+</html>
