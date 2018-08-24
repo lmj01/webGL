@@ -61,7 +61,7 @@
 		xplane2.applyMatrix(xplane.matrix);
 		scene.add(xplane2);
 
-		// 锥体
+		// plane y 
 		var g2 = new THREE.PlaneGeometry(5, 5, 32, 32);
 		var m2 = new THREE.MeshBasicMaterial({color:0x00ff00,side:THREE.DoubleSide});
 		var yplane = new THREE.Mesh(g2, m2);
@@ -71,7 +71,7 @@
 		yplane2.matrix.identity();
 		yplane2.applyMatrix(yplane.matrix);
 		scene.add(yplane2);
-		// 
+		// plane z
 		
 		var g3 = new THREE.PlaneGeometry(5, 5, 32, 32);
 		var m3 = new THREE.MeshBasicMaterial({color:0x0000ff,side:THREE.DoubleSide});
