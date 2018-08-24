@@ -1,0 +1,165 @@
+<!doctype html>
+<html>
+	<head>
+		<title>plane geometry orhtogonal</title>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+		<style>
+			body {
+				background-color : #333;
+			}
+			canvas {
+				position: relative;
+				width: 600px;
+				height: 800px;
+				background-color: transparent;
+			}
+		</style>
+	</head>
+	<body>
+	<canvas id="id_canvas" width="600px" height="800px"></canvas>
+	<br />
+	<button onclick="xAxisRotate();">x-axis-rotate</button>		
+	<button onclick="yAxisRotate();">y-axis-rotate</button>		
+	<button onclick="zAxisRotate();">z-axis-rotate</button>		
+	<script type="text/javascript" src="./../lib/three.js"></script>
+	<script type="text/javascript" src="./../lib/OrbitControls.js"></script>
+	<script>
+	    var canvas = document.getElementById("id_canvas");
+		
+		let scene = new THREE.Scene();
+		let camera = 
+		    //new THREE.PerspectiveCamera(75, canvas.width/canvas.height, 0.1, 1000.0);
+			new THREE.OrthographicCamera(canvas.width/-2, canvas.width/2, canvas.height/2, canvas.height/-2, 1, 100.0);
+		var renderer = new THREE.WebGLRenderer({canvas:canvas});
+		var controls = new THREE.OrbitControls(camera);
+
+		if (true) {
+			let axisLength = 1000;
+			let axisXG = new THREE.Geometry();
+			axisXG.vertices.push(new THREE.Vector3(0, 0, 0), new THREE.Vector3(axisLength, 0, 0));
+			let axisYG = new THREE.Geometry();
+			axisYG.vertices.push(new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, axisLength, 0));
+			let axisZG = new THREE.Geometry();
+			axisZG.vertices.push(new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, axisLength));
+			let axisX = new THREE.Line(axisXG, new THREE.LineBasicMaterial({color:0xff0000}));
+			let axisY = new THREE.Line(axisYG, new THREE.LineBasicMaterial({color:0x00ff00}));
+			let axisZ = new THREE.Line(axisZG, new THREE.LineBasicMaterial({color:0x0000ff}));
+			scene.add(axisX);
+			scene.add(axisY);
+			scene.add(axisZ);
+		}
+
+		var g1 = new THREE.PlaneGeometry(5, 5, 32, 32);
+		var m1 = new THREE.MeshBasicMaterial({color:0xff0000,side:THREE.DoubleSide});
+		var xplane = new THREE.Mesh(g1, m1);
+		xplane.rotation.x = -Math.PI/2;
+		xplane.rotation.y = Math.PI/2;
+		xplane.updateMatrix();
+		let xplane2 = new THREE.Mesh(g1, m1);
+		xplane2.matrix.identity();
+		xplane2.applyMatrix(xplane.matrix);
+		scene.add(xplane2);
+
+		// 锥体
+		var g2 = new THREE.PlaneGeometry(5, 5, 32, 32);
+		var m2 = new THREE.MeshBasicMaterial({color:0x00ff00,side:THREE.DoubleSide});
+		var yplane = new THREE.Mesh(g2, m2);
+		yplane.rotation.x = Math.PI/2;
+		yplane.updateMatrix();
+		let yplane2 = new THREE.Mesh(g2, m2);
+		yplane2.matrix.identity();
+		yplane2.applyMatrix(yplane.matrix);
+		scene.add(yplane2);
+		// 
+		
+		var g3 = new THREE.PlaneGeometry(5, 5, 32, 32);
+		var m3 = new THREE.MeshBasicMaterial({color:0x0000ff,side:THREE.DoubleSide});
+		var zplane = new THREE.Mesh(g3, m3);
+		scene.add(zplane);
+
+		camera.position.z = 10;
+
+		function render() {
+			requestAnimationFrame(render);
+			controls.update();
+			
+			renderer.render(scene, camera);
+		}
+		render();
+		let step = Math.PI / 18;
+		let curQuat = new THREE.Quaternion();
+		function getQuaternion(plane) {
+			let quat = new THREE.Quaternion();
+			let normal = new THREE.Vector3(0,0,1).applyQuaternion(plane.quaternion).normalize();
+			quat.setFromAxisAngle(normal, step);
+			return quat;
+		}
+
+		let worldx = new THREE.Vector3(1,0,0);
+		let worldy = new THREE.Vector3(0,1,0);
+		let worldz = new THREE.Vector3(0,0,1);
+		let localx = new THREE.Vector3();
+		let localy = new THREE.Vector3();
+		let localz = new THREE.Vector3();
+
+		function xAxisRotate() {
+			let quat = getQuaternion(xplane2);
+			yplane2.quaternion.premultiply(quat);
+			zplane.quaternion.premultiply(quat);
+
+			// curQuat.copy(yplane2.quaternion);
+			// curQuat.premultiply(quat);
+			// curQuat.normalize();
+			// yplane2.setRotationFromQuaternion(curQuat);
+
+			// curQuat.copy(zplane.quaternion);
+			// curQuat.premultiply(quat);
+			// curQuat.normalize();
+			// zplane.setRotationFromQuaternion(curQuat);
+
+			// localy.set(0,1,0).applyQuaternion(yplane2.quaternion);
+			// curQuat.setFromAxisAngle(localy, step).multiply(yplane2.quaternion);
+			// yplane2.quaternion.copy(curQuat);
+			// curQuat.setFromAxisAngle(localy, step).multiply(zplane.quaternion);
+			// zplane.quaternion.copy(curQuat);
+
+			// yplane2.rotation.x += step;
+			// zplane.rotation.x += step;
+			yplane2.updateMatrix();
+			zplane.updateMatrix();
+		}
+		function yAxisRotate() {
+			let quat = getQuaternion(yplane2);
+			xplane2.quaternion.premultiply(quat);
+			zplane.quaternion.premultiply(quat);
+			
+			// localz.set(0,0,1).applyQuaternion(yplane2.quaternion);
+			// curQuat.setFromAxisAngle(localz, step).multiply(xplane2.quaternion);
+			// xplane2.quaternion.copy(curQuat);
+			// curQuat.setFromAxisAngle(localz, step).multiply(zplane.quaternion);
+			// zplane.quaternion.copy(curQuat);
+			// xplane2.rotation.y -= step;
+			// zplane.rotation.y += step;
+			xplane2.updateMatrix();
+			zplane.updateMatrix();
+		}
+		function zAxisRotate() {
+			let quat = getQuaternion(zplane);
+			xplane2.quaternion.premultiply(quat);
+			zplane.quaternion.premultiply(quat);
+
+			// localx.set(1,0,0).applyQuaternion(zplane.quaternion);
+			// curQuat.setFromAxisAngle(localx, step).multiply(xplane2.quaternion);
+			// xplane2.quaternion.copy(curQuat);
+			// curQuat.setFromAxisAngle(localx, step).multiply(yplane2.quaternion);
+			// yplane2.quaternion.copy(curQuat);
+			// yplane2.rotation.x += step;
+			// xplane2.rotation.x += step;
+			yplane2.updateMatrix();
+			xplane2.updateMatrix();
+		}
+
+	</script>
+	</body>
+</html>
