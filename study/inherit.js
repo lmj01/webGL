@@ -21,7 +21,6 @@ Cat.prototype.constructor = Cat;
 
 // 继承Prototype版
 function Animal(){
-
 }
 Animal.prototype.species = '';
 function Cat(name,color) {
@@ -32,3 +31,31 @@ Cat.prototype = Animal.prototype;
 Cat.prototype.constructor = Cat;
 
 // 利用空对象作中介
+var F = function(){};
+F.prototype = Animal.prototype;
+Cat.prototype = new F();
+Cat.prototype.constructor = Cat;
+// or function
+function extend(Child, Parent) {
+    var F = function() {};
+    F.prototype = Parent.prototype;
+    Child.prototype = new F();
+    Child.prototype.constructor = Child;
+    Child.uber = Parent.prototype; // 子对象可以直接调用父对象的方法
+}
+extend(Cat, Animal);
+var cat1 = new Cat('','');
+
+// 拷贝继承
+function Animal(){}
+Animal.prototype.species = '';
+function extend2(Child, Parent) {
+    var p = Parent.prototype;
+    var c = Child.prototype;
+    for (var i in p) {
+        c[i] = p[i];
+    }
+    c.uber = p;
+}
+extend2(Cat, Animal);
+var cat1 = new Cat('','');

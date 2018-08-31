@@ -1,0 +1,95 @@
+<!doctype html>
+<html>
+	<head>
+		<title>getSpacePoints -- catmullRom</title>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+		<style>
+			body {
+				background-color : #333;
+			}
+			canvas {
+				position: relative;
+				width: 600px;
+				height: 800px;
+				background-color: transparent;
+			}
+		</style>
+	</head>
+	<body>
+	<canvas id="id_canvas" width="600px" height="800px"></canvas>
+	<br />
+	<script type="text/javascript" src="./../lib/three.js"></script>
+	<script type="text/javascript" src="./../lib/OrbitControls.js"></script>
+	<script>
+	    var canvas = document.getElementById("id_canvas");
+		
+		let scene = new THREE.Scene();
+		let camera = 
+		    //new THREE.PerspectiveCamera(75, canvas.width/canvas.height, 0.1, 1000.0);
+			new THREE.OrthographicCamera(canvas.width/-2, canvas.width/2, canvas.height/2, canvas.height/-2, 1, 100.0);
+		var renderer = new THREE.WebGLRenderer({canvas:canvas});
+		var controls = new THREE.OrbitControls(camera);
+
+		if (true) {
+			let axisLength = 1000;
+			let axisXG = new THREE.Geometry();
+			axisXG.vertices.push(new THREE.Vector3(0, 0, 0), new THREE.Vector3(axisLength, 0, 0));
+			let axisYG = new THREE.Geometry();
+			axisYG.vertices.push(new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, axisLength, 0));
+			let axisZG = new THREE.Geometry();
+			axisZG.vertices.push(new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, axisLength));
+			let axisX = new THREE.Line(axisXG, new THREE.LineBasicMaterial({color:0xff0000}));
+			let axisY = new THREE.Line(axisYG, new THREE.LineBasicMaterial({color:0x00ff00}));
+			let axisZ = new THREE.Line(axisZG, new THREE.LineBasicMaterial({color:0x0000ff}));
+			scene.add(axisX);
+			scene.add(axisY);
+			scene.add(axisZ);
+		}
+
+		// curve
+
+		const curve = new THREE.CatmullRomCurve3( [
+			new THREE.Vector3( -10, 0, 10 ),
+			new THREE.Vector3( -5, 5, 5 ),
+			new THREE.Vector3( 0, 0, 0 ),
+			new THREE.Vector3( 5, -5, 5 ),
+			new THREE.Vector3( 10, 0, 10 )
+		] );
+
+		// create curve mesh
+
+		const geometry = new THREE.Geometry();
+		geometry.vertices = curve.getPoints( 100 );
+
+		const material = new THREE.LineBasicMaterial( { color : 0xff0000 } );
+		const curveObject = new THREE.Line( geometry, material );
+		scene.add( curveObject );
+
+		// visualize spaced points 
+
+		const sphereGeomtry = new THREE.SphereBufferGeometry( 0.1 );
+		const sphereMaterial = new THREE.MeshBasicMaterial( { color: 0xff0000 } );
+
+		const spacedPoints = curve.getSpacedPoints( 20 );
+
+		for ( point of spacedPoints ) {
+
+			const helper = new THREE.Mesh( sphereGeomtry, sphereMaterial );
+			helper.position.copy( point );
+			scene.add( helper );
+
+		}
+		
+		camera.position.z = 10;
+
+		function render() {
+			requestAnimationFrame(render);
+			controls.update();
+			
+			renderer.render(scene, camera);
+		}
+		render();
+	</script>
+	</body>
+</html>
