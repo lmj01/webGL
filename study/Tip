@@ -1,0 +1,3 @@
+改变cursor时,要使用"",不要使用''
+element.style.cursor = "move";
+element.style.cursor = "url(/static/img/pn.png),grab";
