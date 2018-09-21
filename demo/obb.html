@@ -1,0 +1,113 @@
+<!doctype html>
+<html>
+	<head>
+		<title>plane geometry orhtogonal</title>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+		<style>
+			body {
+				background-color : #333;
+			}
+			canvas {
+				position: relative;
+				width: 100%;
+				height: 100%;
+				background-color: transparent;
+			}
+		</style>
+	</head>
+	<body>
+	<canvas id="id_canvas" ></canvas>
+	<br />
+	<script type="text/javascript" src="./../lib/three.js"></script>
+	<script type="text/javascript" src="./../lib/obb.js"></script>
+	<script type="text/javascript" src="./../lib/OrbitControls.js"></script>
+	<script>
+	    var canvas = document.getElementById("id_canvas");
+	    canvas.width = window.innerWidth;
+    	    canvas.height = window.innerHeight;	
+		let scene = new THREE.Scene();
+		scene.background = new THREE.Color(0xf0f0f0);
+		let camera = 
+		    //new THREE.PerspectiveCamera(75, canvas.width/canvas.height, 0.1, 1000.0);
+			new THREE.OrthographicCamera(canvas.width/-2, canvas.width/2, canvas.height/2, canvas.height/-2, 1, 1000.0);
+		var renderer = new THREE.WebGLRenderer({canvas:canvas});
+		var controls = new THREE.OrbitControls(camera);
+
+		if (true) {
+			let axisLength = 1000;
+			let axisXG = new THREE.Geometry();
+			axisXG.vertices.push(new THREE.Vector3(0, 0, 0), new THREE.Vector3(axisLength, 0, 0));
+			let axisYG = new THREE.Geometry();
+			axisYG.vertices.push(new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, axisLength, 0));
+			let axisZG = new THREE.Geometry();
+			axisZG.vertices.push(new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, axisLength));
+			let axisX = new THREE.Line(axisXG, new THREE.LineBasicMaterial({color:0xff0000}));
+			let axisY = new THREE.Line(axisYG, new THREE.LineBasicMaterial({color:0x00ff00}));
+			let axisZ = new THREE.Line(axisZG, new THREE.LineBasicMaterial({color:0x0000ff}));
+			scene.add(axisX);
+			scene.add(axisY);
+			scene.add(axisZ);
+		}
+
+		var g = new THREE.CylinderGeometry(5, 5, 32, 32);
+		var m = new THREE.MeshBasicMaterial({color:0xff0000,side:THREE.DoubleSide});
+		var cylinder = new THREE.Mesh(g, m);
+		let axis = new THREE.Vector3(); axis.set(2,-5,3);
+		let mat = new THREE.Matrix4(); mat.makeRotationAxis(axis.normalize(), 0.70722);
+		cylinder.applyMatrix(mat);
+		cylinder.updateMatrix();
+		let mat2 = new THREE.Matrix4(); mat2.makeTranslation(6,8,6);
+		cylinder.applyMatrix(mat2);
+		cylinder.updateMatrix();		
+		
+		// get obb
+		let points = [];
+		g.vertices.map(v=>points.push(v.applyMatrix4(cylinder.matrix)));
+		//let points = g.vertices.map(v=>v.applyMatrix4(cylinder.matrix));
+		//let points = g.vertices.map(v=>v.applyMatrix4(mat));
+		//let points = g.vertices.map(v=>v.applyQuaternion(cylinder.quaternion));
+		let obb = new mqOBB(points);
+		//let obb = new mqOBB(cylinder.geometry.vertices);
+		let box = obb.createBox();
+		box.geometry.computeBoundingBox();
+		let bbx = box.geometry.boundingBox;
+		let center = new THREE.Vector3();
+		bbx.getCenter(center);
+		
+		let pbegin = bbx.min.clone().set(0, bbx.min.y, 0);
+		let pend = bbx.min.clone().set(0, bbx.max.y, 0);
+		pbegin.applyMatrix4(box.matrix);
+		pend.applyMatrix4(box.matrix);
+
+ 		let mline = new THREE.LineBasicMaterial({color:0xffff00});
+		let g2 = new THREE.Geometry();
+		g2.vertices.push(pbegin, pend);
+		let line2 = new THREE.Line(g2, mline);
+
+		let g3 = new THREE.Geometry();
+		let posOld = cylinder.position.clone().applyMatrix4(cylinder.matrix);
+		//let posNew = box.position.clone().applyMatrix4(box.matrix);
+		let posNew = box.position.clone();
+		g3.vertices.push(posOld, posNew);
+		let line3 = new THREE.Line(g3, mline);
+
+		scene.add(cylinder);
+		scene.add(box);
+		scene.add(line2);
+		scene.add(line3);
+				
+		camera.position.z = 10;
+
+		function render() {
+			requestAnimationFrame(render);
+			controls.update();
+			
+			renderer.render(scene, camera);
+		}
+		render();
+
+
+	</script>
+	</body>
+</html>
