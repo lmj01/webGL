@@ -29,8 +29,8 @@
 		let scene = new THREE.Scene();
 		scene.background = new THREE.Color(0xf0f0f0);
 		let camera = 
-		    //new THREE.PerspectiveCamera(75, canvas.width/canvas.height, 0.1, 1000.0);
-			new THREE.OrthographicCamera(canvas.width/-2, canvas.width/2, canvas.height/2, canvas.height/-2, 1, 1000.0);
+		    new THREE.PerspectiveCamera(75, canvas.width/canvas.height, 0.1, 1000.0);
+		//	new THREE.OrthographicCamera(canvas.width/-2, canvas.width/2, canvas.height/2, canvas.height/-2, 1, 1000.0);
 		var renderer = new THREE.WebGLRenderer({canvas:canvas});
 		var controls = new THREE.OrbitControls(camera);
 
@@ -55,20 +55,16 @@
 		var cylinder = new THREE.Mesh(g, m);
 		let axis = new THREE.Vector3(); axis.set(2,-5,3);
 		let mat = new THREE.Matrix4(); mat.makeRotationAxis(axis.normalize(), 0.70722);
-		cylinder.applyMatrix(mat);
-		cylinder.updateMatrix();
-		let mat2 = new THREE.Matrix4(); mat2.makeTranslation(6,8,6);
+		//cylinder.applyMatrix(mat);
+		//cylinder.updateMatrix();
+		let mat2 = new THREE.Matrix4(); mat2.makeTranslation(5,0,05,0,05,0,05,0,0);
 		cylinder.applyMatrix(mat2);
 		cylinder.updateMatrix();		
 		
 		// get obb
 		let points = [];
 		g.vertices.map(v=>points.push(v.applyMatrix4(cylinder.matrix)));
-		//let points = g.vertices.map(v=>v.applyMatrix4(cylinder.matrix));
-		//let points = g.vertices.map(v=>v.applyMatrix4(mat));
-		//let points = g.vertices.map(v=>v.applyQuaternion(cylinder.quaternion));
 		let obb = new mqOBB(points);
-		//let obb = new mqOBB(cylinder.geometry.vertices);
 		let box = obb.createBox();
 		box.geometry.computeBoundingBox();
 		let bbx = box.geometry.boundingBox;
@@ -97,7 +93,7 @@
 		scene.add(line2);
 		scene.add(line3);
 				
-		camera.position.z = 10;
+		camera.position.z = 100;
 
 		function render() {
 			requestAnimationFrame(render);
