@@ -1,0 +1,24 @@
+<html>
+	<head>
+	</head>
+	<body>
+		<p class="aa">1</p>
+		<p class="bb">2</p>
+		<p class="bb aa">3</p>
+		<p class="bb cc aa">4</p>
+	</body>
+	<script>
+		let elements = document.getElementsByClassName("aa bb");
+		console.log('getElementsByClassName', elements);
+
+		for(let i=0,c=elements.length;i<c;i++) {
+			let item = elements.item(i);
+			console.log('item ', (i+1), item);
+			console.log('className ', item.className);
+			console.log('attribute ', item.getAttribute('class'));
+			console.log('classList ', item.classList);
+		}
+
+
+	</script>
+</html>
