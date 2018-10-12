@@ -31,7 +31,7 @@
 	</body>
 	<script src="../lib/dat.gui.js"></script>
 	<script>
-		var gui = new dat.GUI();
+var gui = new dat.GUI({width:245});
 		console.log(gui);
 		let btn = gui.domElement.children[2];
 		btn.style.display = "none";
@@ -77,9 +77,8 @@
 		let grandfather = ctrl3.domElement.parentElement.parentElement;
 		grandfather.innerHTML = '';
 		grandfather.style.display = "inline-block";
-		grandfather.style.backgroundColor = 'gray';
+		grandfather.style.backgroundColor = 'red';
 		grandfather.style.width = "100%";
-		console.log(grandfather.style.width);
 		function btnClicked(args) {
 			console.log("btn click", args);
 		}
@@ -91,17 +90,95 @@
 			btn.setAttribute("value", (i+1));
 			//btn.onclick = function(){console.log(this,"btn click");}; 
 			btn.setAttribute("onclick", "btnClicked("+(i+1)+");");
-			btn.style.margin = "1px";
 			btn.style.height = "20px";
-			btn.style.width = "26px";
+			btn.style.width = 100/9+"%";
 			btn.style.display = "inline-block";
 			btn.style.backgroundImage = 'url(../resource/dat-4.png)';
 			btn.style.backgroundRepeat = 'no-repeat';
 			btn.style.backgroundPosition = 'center';
-			//btn.style.outline = "none";
-			//btn.style.border = "1px solid transparent";
 			grandfather.appendChild(btn);
 		}
+
+		let f = gui.addFolder('some-folder');
+		let father = f.domElement.parentElement;
+		//let father = f.domElement;
+		father.innerHTML = '';
+		father.style.display = 'inline-block';
+		father.style.backgroundColor = 'green';
+		father.style.width = "100%";
+		for (let i=0,c=6;i<c;i++) {
+			let e = document.createElement("span");
+			e.setAttribute('title', 'tip-id-'+(i+1));
+			e.setAttribute('onclick', 'btnClicked('+(i+1)+');');
+			e.style.height = "20px";
+			e.style.width = 100/6 + "%";
+			e.style.display = "inline-block";
+			e.style.backgroundImage = 'url(../resource/dat-3.png)';
+			e.style.backgroundRepeat = 'no-repeat';
+			e.style.backgroundPosition = 'center';
+			father.append(e);
+		}
+
+		let f2 = gui.addFolder('some-folder22');
+		let father2 = f2.domElement.parentElement;
+		father2.innerHTML = '';
+		father2.style.display = 'inline-block';
+		father2.style.backgroundColor = 'gray';
+		father2.style.height = '22px';
+		father2.style.width = '100%';
+		let child1 = document.createElement('span');
+		child1.setAttribute('title', 'span-title');
+		child1.style.height = '100%';
+		child1.style.width = '20%';
+		child1.style.display = 'inline-block';
+		child1.style.backgroundColor = 'red';
+		let child2 = document.createElement('div');
+		child2.style.display = 'inline-block';
+		child2.style.height = '100%';
+		child2.style.width = '60%';
+		child2.style.position = 'relative';
+		child2.style.cursor = 'pointer';
+		let d1 = document.createElement('div');
+		d1.style.position = 'absolute';
+		d1.style.width = '100%';
+		d1.style.height = '6px';
+		d1.style.left = '0px';
+		d1.style.top = '8px';
+		d1.style.background = 'green';
+		let d2 = document.createElement('div');
+		d2.style.position = 'absolute';
+		d2.style.border = '1px solid rgb(0,255,170)';
+		d2.style.boxSizing = 'border-box';
+		d2.style.borderRadius = '0px';
+		d2.style.top = '4px';
+		d2.style.left = '0px';
+		d2.style.width = '12px';
+		d2.style.height = '12px';
+		let xpos = 0;
+		d2.ondrag = function(e){
+			console.log(e.offsetX,e);
+			let x = e.offsetX - xpos;
+			//d2.style.left = x+'px';
+			//xpos = e.offsetX;
+		}
+		d1.onmouseup = function(e) {
+			isdown = false;
+			let width = 245 * 0.6;
+			console.log(d1.style.width, width);
+			let offset = Math.max(0, Math.min(e.offsetX - 6, width-12));
+			d2.style.left = offset + 'px';
+		}
+		child2.append(d1);
+		child2.append(d2);
+		let child3 = document.createElement('input');
+		child3.style.position = 'absolute';
+		child3.style.display = 'inline-block';
+		//child3.style.height = '100%';
+		child3.style.width = '40px';
+		father2.append(child1);
+		father2.append(child2);
+		father2.append(child3);
+
 
 		for(let i=0,c=100;i<c;i++) {
 			gui.add(obj, "add").name("placehold-"+(i+1));

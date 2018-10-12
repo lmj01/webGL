@@ -1,0 +1,4 @@
+
+--列出按照的软件
+  dpkg --get-sections
+
