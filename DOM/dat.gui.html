@@ -1,0 +1,110 @@
+<html>
+	<head>
+		<style>
+			.function:nth-child(1) .property-name{
+				background-image: url('../resource/dat-1.png');
+				background-repeat: no-repeat;
+				background-position: right;
+				background-color:gray;
+				color:yellow;
+			}
+
+			.function:nth-child(2) .property-name{
+				background-image: url('../resource/dat-2.png');
+				background-repeat: no-repeat;
+				background-position: center;
+				background-color: teal;
+				color:aqua;
+			}
+			.function:nth-child(3) .property-name{
+				background-image: url('../resource/dat-3.png');
+				background-repeat: no-repeat;
+				background-position: left;
+				background-color:pink;
+				color:red;
+				text-align: right;
+			}
+		</style>
+	</head>
+	<body>
+		<p>this page test for dat.GUI library</p>	
+	</body>
+	<script src="../lib/dat.gui.js"></script>
+	<script>
+		var gui = new dat.GUI();
+		console.log(gui);
+		let btn = gui.domElement.children[2];
+		btn.style.display = "none";
+		console.log(btn);
+		var obj = {
+			add: function() {
+				console.log("add clicked!");
+			},
+			sub: function() {
+				//console.log(this, "sub clicked!");
+			},
+		};
+		gui.add(obj, "add").name("Nuke'em all!");
+		gui.add(obj, "add").name("I'am File!");
+		gui.add(obj, "add").name("Harmony");
+		var control = gui.add(obj, "add").name("Css is awesome!");
+		console.log(control);
+		var style = control.domElement.previousSibling.style;
+
+		style.backgroundImage = 'url(../resource/dat-4.png)';
+		style.backgroundRepeat = 'no-repeat';
+		style.backgroundPosition = 'left';
+		style.backgroundColor = 'white';
+		style.color = 'black';
+		style.width = "100%";
+		console.log(style);
+
+		var ctrl2 = gui.add(obj, "sub");
+		//ctrl2.domElement.innerHTML = '<button>btn1</button><button>btn2</button>';
+		ctrl2.domElement.innerHTML = '';
+		ctrl2.domElement.style.display = "inline-block";
+		ctrl2.domElement.style.width = "180px";
+		let head = ctrl2.domElement.previousElementSibling;
+		head.style.width = '30px';
+		for (let i=0,c=4;i<c;i++) {
+			let btn = document.createElement("button");
+			btn.textContent = 'btn'+(i+1);
+			btn.style.float = "left";
+			ctrl2.domElement.appendChild(btn);
+		}
+
+		var ctrl3 = gui.add(obj, 'sub');
+		let grandfather = ctrl3.domElement.parentElement.parentElement;
+		grandfather.innerHTML = '';
+		grandfather.style.display = "inline-block";
+		grandfather.style.backgroundColor = 'gray';
+		grandfather.style.width = "100%";
+		console.log(grandfather.style.width);
+		function btnClicked(args) {
+			console.log("btn click", args);
+		}
+		for (let i=0,c=8;i<c;i++) {
+			let btn = document.createElement("span");
+			// span不带文字时,宽度为0,
+			//btn.textContent = 'btn'+(i+1);
+			btn.setAttribute("title", "tip-for-span"+(i+1));
+			btn.setAttribute("value", (i+1));
+			//btn.onclick = function(){console.log(this,"btn click");}; 
+			btn.setAttribute("onclick", "btnClicked("+(i+1)+");");
+			btn.style.margin = "1px";
+			btn.style.height = "20px";
+			btn.style.width = "26px";
+			btn.style.display = "inline-block";
+			btn.style.backgroundImage = 'url(../resource/dat-4.png)';
+			btn.style.backgroundRepeat = 'no-repeat';
+			btn.style.backgroundPosition = 'center';
+			//btn.style.outline = "none";
+			//btn.style.border = "1px solid transparent";
+			grandfather.appendChild(btn);
+		}
+
+		for(let i=0,c=100;i<c;i++) {
+			gui.add(obj, "add").name("placehold-"+(i+1));
+		}
+	</script>
+</html>

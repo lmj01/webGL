@@ -12,5 +12,39 @@ AO-Ambient Occlusion
    空间的层次感, 真实感, 同时加强和改善画面的明暗对比, 增强画面的艺术性.
    对ambient light考虑遮挡: 表面从各个方向接收到的光的总量不是等量值啦, 取决于从表面的光线是否被遮挡
    模拟遮挡的思路是: 对于顶点P, 发射N条射线, 其中h条射线与mesh网格相交, 遮挡值occlusion=h/N, 射线需要参考一个
-   距离distance来判断是否被遮挡(太远的光源影响是很小的), 此技术计算量很大, 只适用于静态网格模型,不可能实时动态模型 
+   距离distance来判断是否被遮挡(太远的光源影响是很小的), 此技术计算量很大, 只适用于静态网格模型. 
+Bump Mapping
+   通过改变几何体表面各点的法线,使本来平的看起来有凹凸的效果,是一种欺骗眼睛的技术. 是把像素的法线相关的信息存储
+   在一张texture中,像素的法线就是通过texture中sample进行计算.
+   如高度值,可计算出与周围像素的高度差,即像素坡度, 再去扰动法向量,得到新的法向量用于光照计算.
+   du=1/mapWidth, dv=1/mapHeight, 在切线空间中
+   u_gradient = Height(u-du,v) - Height(u+du,v) U方向的坡度
+   v_gradient = Height(u,v-dv) - Height(u,v+dv) v方向的坡度
+   newN = N + (T * u_gradient) + (B * v_gradient)
+   shader pesudocode:
+   float u_gradient = tex2D(map, texcoord + vector2(-du,0)) - tex2D(map, texcoord + vector2(du, 0));
+   float v_gradient = tex2D(map, texcoord + vector2(-dv,0)) - tex2D(map, texcoord + vector2(dv, 0));
+   float newN = N + T * u_gradient + B * v_gradient;
+
+Matcap-Material Capture
+   材质捕获,是一种把光照信息存储在纹理,从而省略大量光照计算(只需要采样一张图),就可实现有光的感觉
+   优点是能出效果, 非常省
+   缺点是光照图是死的,难以是效果与环境产生交互
+   很多PBR的效果都是在物体法线和光线以及相机的三重影响下的效果, 假定相机位置不变的情况下,光线信息知道(matcap
+   就是记录光线信息,法线是索引), 这样的计算量小啦.
+
+Normal Mapping
+   是Bump Mapping的一种, 直接存储normal在texture中,一般都是利用高模离线NormalMap,场景中低模加上采样的normal渲染,
+   NormalMap的normal是切线空间,光照计算时,需要把N,lightDir,viewerDir统一到相同的坐标系中
+
+Parallax Mapping
+   是Normal Mapping的改进, 物体表面高低不平时,视线方向不同时看到的效果也应该不一样的,需要对纹理坐标进行偏移,
+   为了实时渲染,采用了近似偏移的方法
+
+Tangent Space
+   是一个顶点的坐标系, 原点是顶点, z轴是顶点的法线(N),一般使用纹理坐标，以u轴为切线tangent(T),通过T和N叉乘得到
+　 B(v),即Tangent(T), Bi-Normal(B) 和 Normal(N)对应的uvn.切线空间不仅存储法线,把viewerDir,lightDir在VS中转换到
+　　Tangent Space中,在FS中对法线纹理采样后,进行光照计算.
+   切线坐标系是相对于每个顶点的，比模型中绝对坐标更灵活，因顶点与顶点所在面的法线偏移量较小，也就是凹凸程度不会
+　 太夸张，可以看成是一种扰动． 
 
