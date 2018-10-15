@@ -1,0 +1,179 @@
+<html>
+	<head>
+		<meta charset='utf-8'>
+		<style>
+		mytag2 {
+			font-weight: bold;
+		}
+		</style>
+	</head>
+	<body>
+		<h1>some demo for custom-element in javascript</h1>
+		<p>some custom element tag in javascript</p>
+		<mytag2> this test is in bold</mytag2>
+		<div>
+			<p is='word-count'>
+				this p contains words
+				<label>
+					this child context
+				</label>
+			</p>
+		</div>
+		<popup-info img='../resource/alt.png' text='this is text for popup-info'>
+		<!--
+		-->
+	</body>
+	<script>
+		let br = document.createElement('br');
+
+		// this document.registerElemetn has been remvoed from the Web standards.
+		var myTag = document.registerElement('my-tag');
+		document.body.appendChild(new myTag());
+		let mytag = document.getElementsByTagName('my-tag')[0];
+		mytag.textContent = "I'm a my-tag element";
+		document.body.appendChild(br);
+
+		// another way
+		var XFooProto = Object.create(HTMLElement.prototype);
+		// 1. give x-foo a foo() method
+		XFooProto.foo = function() {
+			console.log('foo() called');
+		};
+		// 2. define a property read-only bar
+		Object.defineProperty(XFooProto, 'bar', {value:5});
+		// 3. register x-foo's definition
+		var XFoo = document.registerElement('x-foo', {prototype: XFooProto});
+		// 4. instantiate x-foo
+		var xfoo = document.createElement('x-foo');
+		document.body.appendChild(xfoo);
+		console.log(xfoo);
+		document.body.appendChild(br);
+	
+		class BasicElement extends HTMLElement {
+			connectedCallback() {
+				this.textContent = 'jst a basic custom element';
+			}
+		}
+		customElements.define('basic-element', BasicElement);
+		document.body.appendChild(new BasicElement());
+		document.body.appendChild(br);
+
+		// CustomElementRegistry interface provides methods for registering custom elements
+		// and querying registered elements.	
+		// Create a class for the element
+		class PopUpInfo extends HTMLElement {
+			constructor() {
+				// Always call super first in constructor
+				super();
+				console.log('constructor', this);
+			        // Create a shadow root
+			        var shadow = this.attachShadow({mode: 'open'});
+
+				// Create spans
+				var wrapper = document.createElement('span');
+				wrapper.setAttribute('class','wrapper');
+
+				var icon = document.createElement('span');
+				icon.setAttribute('class','icon');
+				icon.setAttribute('tabindex', 0);
+				
+				var info = document.createElement('span');
+				info.setAttribute('class','info');
+
+				// Take attribute content and put it inside the info span
+				var text = this.getAttribute('text') || 'text attribute is null';
+				info.textContent = text;
+
+				// Insert icon
+				var imgUrl;
+				if(this.hasAttribute('img')) {
+					imgUrl = this.getAttribute('img');
+				} else {
+				        imgUrl = '../resource/default.png';
+				}
+				var img = document.createElement('img');
+				img.src = imgUrl;
+				icon.appendChild(img);
+
+				// Create some CSS to apply to the shadow dom
+				var style = document.createElement('style');
+			        style.textContent = '.wrapper {' +
+						'position: relative;' +
+					'}' +
+	                                '.info {' +
+						'font-size: 0.8rem;' +
+						'width: 200px;' +
+						'display: inline-block;' +
+					        'border: 1px solid black;' +
+						'padding: 10px;' +
+						'background: white;' +
+						'border-radius: 10px;' +
+						'opacity: 0;' +
+						'transition: 0.6s all;' +
+						'position: absolute;' +
+						'bottom: 20px;' +
+						'left: 10px;' +
+						'z-index: 3;' +
+					'}' +
+	                                'img {' +
+		                                'width: 1.2rem' +
+		                        '}' +
+		                        '.icon:hover + .info, .icon:focus + .info {' +
+		                                'opacity: 1;' +
+		                        '}';
+				// attach the created elements to the shadow dom
+				shadow.appendChild(style);
+				shadow.appendChild(wrapper);
+				wrapper.appendChild(icon);
+				wrapper.appendChild(info);
+			}
+		}
+		// Define the new element
+		customElements.define('popup-info', PopUpInfo);		
+		let popupInfo = new PopUpInfo();
+		//popupInfo.img = '../resource/default.png';
+		//popupInfo.text = 'this is a test for this popup-info tag element';
+		document.body.appendChild(popupInfo);
+		document.body.appendChild(br);
+
+		// Create a class for the element
+		class WordCount extends HTMLParagraphElement {
+			constructor() {
+				// Always call super first in constructor
+				super();
+
+				// count words in element's parent element
+				var wcParent = this.parentNode;
+
+				function countWords(node){
+					var text = node.innerText || node.textContent
+					return text.split(/\s+/g).length;
+				}
+
+				var count = 'Words: ' + countWords(wcParent);
+
+				// Create a shadow root
+				var shadow = this.attachShadow({mode: 'open'});
+
+				// Create text node and add word count to it
+				var text = document.createElement('span');
+				text.textContent = count;
+
+				// Append it to the shadow root
+				shadow.appendChild(text);
+
+			        // Update count when element content changes
+				setInterval(function() {
+					var count = 'Words: ' + countWords(wcParent);
+					text.textContent = count;
+				}, 200)
+	        	}
+		}
+
+		// Define the new element
+		customElements.define('word-count', WordCount, { extends: 'p' });
+		//document.body.appendChild(new WordCount());
+		document.body.appendChild(br);
+		
+	</script>
+</html>

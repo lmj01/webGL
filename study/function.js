@@ -37,7 +37,7 @@ let anonymouseNormal = function(v1, v2) {
 	console.log(v1+v2);
 }
 anonymouseNormal(3,6);
-// type 2.1
+// type 2.1 仅执行一次, 没有测试过
 console.log('type 2.1');
 (function(v) {
 	console.log(v);

@@ -31,6 +31,89 @@
 	</body>
 	<script src="../lib/dat.gui.js"></script>
 	<script>
+		function sliderControl(gui, options) {
+			let f = gui.addFolder(options.name);
+			let domElement = f.domElement.parentElement;
+			domElement.innerHTML = '';
+			domElement.style = "position:relative;display:inline-block;width:"+options.width+
+				"px;height:"+options.height+"px;";
+
+			let child1 = document.createElement('span');
+			child1.textContent = options.headName;
+			child1.setAttribute('class', 'property-name');
+			child1.setAttribute('title', options.headTitle);
+			child1.style = "height:100%;width:"+options.head+"px;display:inline-block;"+
+				"margin-top:5px;";
+		
+			let child2 = document.createElement('div');
+			child2.style = "display:inline-block; height:100%;margin:0px 5px 0px 5px;"+
+				"position:relative;cursor:pointer;";
+			let xposMax = 245 - options.head - options.tail - 4 * options.level - 10;
+			child2.style.width = xposMax +'px';
+			let d1 = document.createElement('div');
+			d1.style = "position:absolute; width:100%;height:6px;left:0px;top:8px;background:green;"
+			let d2 = document.createElement('div');
+			d2.style = "position:absolute; position:absolute; border:1px solid rgb(0,255,170);"+
+				"box-sizing:border-box;border-radius:0px;"+
+				"top:4px;left:0px;width:12px;height:12px;";
+			let isdown = false;
+			child2.onmousedown = function(e) {
+				e.preventDefault();
+				e.stopPropagation();
+				if (e.offsetX !== e.layerX) return;
+				let offset = Math.max(0, Math.min(e.offsetX - 6, xposMax - 12));
+				d2.style.left = offset + 'px';
+				isdown = true;
+				let val = options.min + (options.max-options.min)*offset/(xposMax-12);
+				val = val.toFixed(2);
+				child3.value = val;
+				if (options.onChange) options.onChange(val);
+			}
+			child2.onmousemove1 = function(e) {
+				e.preventDefault();
+				e.stopPropagation();
+				if (isdown) {
+					let str = d2.style.left;
+					let xpos = parseInt(str.substr(0, str.length-2)) + e.movementX;
+					let offset = Math.max(0, Math.min(xpos - 6, xposMax - 12));
+					console.log('move ', xpos, offset);
+					d2.style.left = offset + 'px';
+					child3.value = offset;
+				}
+			}
+			child2.onmouseup1 = function(e) {
+				e.preventDefault();
+				isdown = false;
+			}
+			child2.append(d1);
+			child2.append(d2);
+			let child3 = document.createElement('input');
+			child3.style = "position:absolute;display:inline-block;width:"+options.tail+"px;";
+			domElement.append(child1);
+			domElement.append(child2);
+			domElement.append(child3);
+		}
+	</script>
+	<script>
+		function buttonWithIcon(gui, options) {
+			let f = gui.addFolder(options.name);
+			let domElement = f.domElement.parentElement;
+			//let domElement = f.domElement;
+			domElement.innerHTML = '';
+			domElement.style = "display:inline-block;width:100%;background-color:green;";
+			for (let i=0,c=6;i<c;i++) {
+				let e = document.createElement("span");
+				e.setAttribute('title', 'tip-id-'+(i+1));
+				e.setAttribute('onclick', '('+options.onChange+')('+(i+1)+');');
+				e.style = "height:20px;width:"+100/6+"%;display:inline-block;";
+				e.style.backgroundImage = 'url(../resource/dat-3.png)';
+				e.style.backgroundRepeat = 'no-repeat';
+				e.style.backgroundPosition = 'center';
+				domElement.append(e);
+			}
+		}
+	</script>
+	<script>
 var gui = new dat.GUI({width:245});
 		console.log(gui);
 		let btn = gui.domElement.children[2];
@@ -99,86 +182,27 @@ var gui = new dat.GUI({width:245});
 			grandfather.appendChild(btn);
 		}
 
-		let f = gui.addFolder('some-folder');
-		let father = f.domElement.parentElement;
-		//let father = f.domElement;
-		father.innerHTML = '';
-		father.style.display = 'inline-block';
-		father.style.backgroundColor = 'green';
-		father.style.width = "100%";
-		for (let i=0,c=6;i<c;i++) {
-			let e = document.createElement("span");
-			e.setAttribute('title', 'tip-id-'+(i+1));
-			e.setAttribute('onclick', 'btnClicked('+(i+1)+');');
-			e.style.height = "20px";
-			e.style.width = 100/6 + "%";
-			e.style.display = "inline-block";
-			e.style.backgroundImage = 'url(../resource/dat-3.png)';
-			e.style.backgroundRepeat = 'no-repeat';
-			e.style.backgroundPosition = 'center';
-			father.append(e);
-		}
-
-		let f2 = gui.addFolder('some-folder22');
-		let father2 = f2.domElement.parentElement;
-		father2.innerHTML = '';
-		father2.style.display = 'inline-block';
-		father2.style.backgroundColor = 'gray';
-		father2.style.height = '22px';
-		father2.style.width = '100%';
-		let child1 = document.createElement('span');
-		child1.setAttribute('title', 'span-title');
-		child1.style.height = '100%';
-		child1.style.width = '20%';
-		child1.style.display = 'inline-block';
-		child1.style.backgroundColor = 'red';
-		let child2 = document.createElement('div');
-		child2.style.display = 'inline-block';
-		child2.style.height = '100%';
-		child2.style.width = '60%';
-		child2.style.position = 'relative';
-		child2.style.cursor = 'pointer';
-		let d1 = document.createElement('div');
-		d1.style.position = 'absolute';
-		d1.style.width = '100%';
-		d1.style.height = '6px';
-		d1.style.left = '0px';
-		d1.style.top = '8px';
-		d1.style.background = 'green';
-		let d2 = document.createElement('div');
-		d2.style.position = 'absolute';
-		d2.style.border = '1px solid rgb(0,255,170)';
-		d2.style.boxSizing = 'border-box';
-		d2.style.borderRadius = '0px';
-		d2.style.top = '4px';
-		d2.style.left = '0px';
-		d2.style.width = '12px';
-		d2.style.height = '12px';
-		let xpos = 0;
-		d2.ondrag = function(e){
-			console.log(e.offsetX,e);
-			let x = e.offsetX - xpos;
-			//d2.style.left = x+'px';
-			//xpos = e.offsetX;
-		}
-		d1.onmouseup = function(e) {
-			isdown = false;
-			let width = 245 * 0.6;
-			console.log(d1.style.width, width);
-			let offset = Math.max(0, Math.min(e.offsetX - 6, width-12));
-			d2.style.left = offset + 'px';
-		}
-		child2.append(d1);
-		child2.append(d2);
-		let child3 = document.createElement('input');
-		child3.style.position = 'absolute';
-		child3.style.display = 'inline-block';
-		//child3.style.height = '100%';
-		child3.style.width = '40px';
-		father2.append(child1);
-		father2.append(child2);
-		father2.append(child3);
-
+		buttonWithIcon(gui, {
+			name:'button',
+			onChange: function(arg) {
+				console.log('button-with-icon ', arg);
+			}
+		});
+		sliderControl(gui, {
+			name:'slider',
+			min: 1,
+			max: 100,
+			step: 1,
+			width: 245,
+			height: 22,
+			headName: 'head',
+			headTitle: 'head-title',
+			head: 40,			
+			tail: 40,
+			level: 1,
+			onChange: function() {
+			},
+		});
 
 		for(let i=0,c=100;i<c;i++) {
 			gui.add(obj, "add").name("placehold-"+(i+1));
