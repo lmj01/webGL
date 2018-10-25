@@ -1,0 +1,55 @@
+<!doctype html>
+<html>
+	<head>
+		<title>nipplejs demo</title>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+		<style>
+		</style>
+		<link rel="stylesheet" type="text/css" href="./styles.css">
+		<script src="../lib/jquery-1.10.2.js"></script>
+	</head>
+	<body>
+		<div class="site-content cf">
+			<div class="boxed-group dangerzone">
+			      <h3>Account</h3>
+			      <div class="boxed-group-inner">
+			      <section>
+			      		<h4>Delete this account</h4>
+				        <button href="#" class="btn btn-danger boxed-action" id="delete-account">Delete Account</button>
+				        <p>This action is permanent; think twice before proceeding!</p>
+				        <dialog id="confirm-delete" class="site-dialog">
+				          <header class="dialog-header">
+						  <h1>Please Confirm</h1>
+					  </header>
+					<div class="dialog-content">
+					<p>You are about to close your account. This action is irreversible. It will permanently delete your account along with its associated data. Are you sure you want to continue?</p>
+					</div>
+				      <div class="btn-group cf">
+				      <button id="delete">Delete</button>
+				      <button id="cancel">Cancel</button>
+			            </div>
+			            </dialog>
+		          </section>
+		      </div>
+		        </div>
+		</div>
+	<script>
+	(function($) {
+		  'use strict';
+
+		    var $accountDelete = $('#delete-account'),
+		      $accountDeleteDialog = $('#confirm-delete');
+
+		      $accountDelete.on('click', function() {
+			          $accountDeleteDialog[0].showModal();
+				    });
+
+		        $('#cancel').on('click', function() {
+				    $accountDeleteDialog[0].close();
+				      });
+
+	})(jQuery);
+	</script>
+	</body>
+</html>

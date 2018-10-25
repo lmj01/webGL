@@ -1,0 +1,58 @@
+<html>
+	<head>
+		<style>
+			#menu {
+				font:12px verdana, arial, sans-serif;
+				font-weight: bolder;
+			}
+			#menu li {
+				list-style-image: none;
+				list-style-type:none;
+				background-color: #999999;
+				border-right-width: 1px;
+				border-right-style: solid;
+				border-right-color:#000000;
+				float: left;
+			}
+			#menu li a {
+				color: #ffffff;
+				text-decoration: none;
+				margin: 0px;
+				padding-top: 8px;
+				display: block;
+				padding-right: 50px;
+				padding-bottom: 8px;
+				padding-left: 50px;
+			}
+			#menu li a:hover {
+				background-color:#0099CC;
+			}
+		</style>
+	</head>
+	<body>
+		<ul id="menu">
+			<li><a href="http://www.baidu.com">baidu1</></li>
+			<li><a href="http://www.baidu.com">baidu2</></li>
+			<li><a href="http://www.baidu.com">baidu3</></li>
+			<li><a href="http://www.baidu.com">baidu4</></li>
+			<li><a href="http://www.baidu.com">baidu5</></li>
+			<li><a href="http://www.baidu.com">baidu6</></li>
+			<li><a href="http://www.baidu.com">baidu7</></li>
+		</ul>
+
+	</body>
+	<script>
+		let elements = document.getElementsByClassName("aa bb");
+		console.log('getElementsByClassName', elements);
+
+		for(let i=0,c=elements.length;i<c;i++) {
+			let item = elements.item(i);
+			console.log('item ', (i+1), item);
+			console.log('className ', item.className);
+			console.log('attribute ', item.getAttribute('class'));
+			console.log('classList ', item.classList);
+		}
+
+
+	</script>
+</html>
