@@ -1,0 +1,152 @@
+<!doctype html>
+<html>
+    <head>
+    <style>
+	#outElement {
+		position:relative;
+		background-color: blue;
+		width: 600px;
+		height:20px;
+		top: 50px;
+		left: 50px;
+	}
+	#inElement{
+		position: absolute;
+		background-color: green;
+		user-select: none;
+		width: 100px;
+		height: 20px;
+	}
+    </style>
+    </head>
+    <body>
+	<div id='outElement'>
+		<div id='inElement' >
+		</div>
+	</div>	
+    <script>
+	function mydrag(idout,idin) {
+		var domOut = document.getElementById(idout);
+		var domIn = document.getElementById(idin);
+		var posx,posy;
+		var inStyle = window.getComputedStyle(domIn);
+		var outStyle = window.getComputedStyle(domOut);
+		var top=inStyle.top,left=inStyle.left;
+		//console.log('top,left ', top, left);
+		var inWidth = parseInt(inStyle.width),
+			inHeight = parseInt(inStyle.height),
+			outWidth = parseInt(outStyle.width),
+			outHeight= parseInt(outStyle.height);
+		//console.log('in--', inWidth, inHeight);
+		//console.log('out--', outWidth, outHeight);
+		var diffx,diffy;
+		var isdown = false;
+		function onDown(e) {
+			domIn.style.cursor = 'move';
+			e = e || window.event;
+			posx = e.clientX;
+			posy = e.clientY;
+			top = top.replace('px','');
+			left = left.replace('px', '');
+			diffx = posx - left;
+			diffy = posy - top;
+			console.log('down--',diffx,diffy);
+			isdown = true;
+
+			document.onmousemove = function(e) {
+				console.log('is down ', isdown);
+				if (!isdown) return;
+				e = e || window.event;
+				let x = e.clientX - diffx;
+				let y = e.clientY - diffy;
+				//console.log('doc-move--', x, y);
+					if (x < 0) x = 0;
+				if (y < 0) y = 0;
+				if (x + inWidth > outWidth) x = outWidth - inWidth;
+				if (y + inHeight > outHeight) y = outHeight - inHeight;
+				move(x, y);
+			}
+		}
+		function onUp(e) {
+			domIn.style.cursor = 'default';
+			isdown = false;
+			document.onmousemove = function(){}
+		}
+		function move(x,y) {
+			console.log('move--',x,y);
+			domIn.style.left = x+'px';
+			//domIn.style.top = y+'px';
+		}
+		domIn.addEventListener('mousedown', onDown, false);
+		domIn.addEventListener('mouseup', onUp, false);
+		//document.onmouseup = function(e) {
+		//	isdown = false;
+			//document.onmousemove = function(){};
+		//}
+	}
+	//mydrag('outElement', 'inElement');
+		function SlidingDrag(domOut, domIn, cb) {
+			this.domIn = domIn;
+			this.domOut= domOut;
+			this.cb = cb;
+		}
+		SlidingDrag.prototype.constructor = SlidingDrag;
+		SlidingDrag.prototype.update = function(x, y) {
+			this.domIn.style.left = x+'px';
+			this.domIn.style.top = y+'px';
+		}
+		SlidingDrag.prototype.start = function(e) {
+			this.domIn.style.cursor = 'move';
+			if(this.cb) this.domOut.addEventListener('mouseout', this.cb, false);
+			let self = this;
+			let inStyle = window.getComputedStyle(domIn);
+			let outStyle = window.getComputedStyle(domOut);
+			let top=inStyle.top,
+				left=inStyle.left;
+			//console.log('top,left ', top, left);
+			let inWidth = parseInt(inStyle.width),
+				inHeight = parseInt(inStyle.height),
+				outWidth = parseInt(outStyle.width),
+				outHeight= parseInt(outStyle.height);
+			//console.log('in--', inWidth, inHeight);
+			//console.log('out--', outWidth, outHeight);
+			
+			this.domIn.style.cursor = 'move';
+			e = e || window.event;
+			let posx = e.clientX;
+			let posy = e.clientY;
+			top = top.replace('px','');
+			left = left.replace('px', '');
+			let diffx = posx - left;
+			let diffy = posy - top;
+			console.log('down--',diffx,diffy);
+	
+			document.onmousemove = function(e) {
+				e = e || window.event;
+				let x = e.clientX - diffx;
+				let y = e.clientY - diffy;
+				//console.log('doc-move--', x, y);
+				if (x < 0) x = 0;
+				if (y < 0) y = 0;
+				if (x + inWidth > outWidth) x = outWidth - inWidth;
+				if (y + inHeight > outHeight) y = outHeight - inHeight;
+				self.update(x, y);
+			}
+		}
+		SlidingDrag.prototype.end = function(e) {
+			this.domIn.style.cursor = 'default';
+			//document.onmousemove = function(){}; 
+			document.onmousemove = null; 
+		}
+		var domOut = document.getElementById('outElement');
+		var domIn = document.getElementById('inElement');
+		function cb(e) {
+			lmjdrag.end();
+			domOut.removeEventListener('mouseout', cb, false);
+		}
+		lmjdrag = new SlidingDrag(domOut, domIn, cb);
+		domIn.addEventListener('mousedown', (e)=>lmjdrag.start(e), false);
+		domIn.addEventListener('mouseup', (e)=>lmjdrag.end(e), false);
+        </script>
+    </body>
+</html>
