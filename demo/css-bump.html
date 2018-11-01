@@ -1,0 +1,86 @@
+<!doctype html>
+<html>
+	<head>
+		<title>bump-css-style</title>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+		<style>
+	button {
+		width: 32px;
+		height: 32px;
+		background: url('RulerIcon.png');
+	}
+	.mybtn {
+		border-style: none;
+		box-sizing: border-box;
+		border-width: 2px;
+	}
+	.first1 {
+
+		box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.6),
+			inset 0 -2px 0 rgba(0, 0, 0, 0.1);
+	}
+	.first2 {
+		border-radius: 4px;
+		border: 1px solid #333;
+		box-shadow: inset 0 0 2px 2px #ccc;
+	}
+	.first3 {
+		box-shadow: 0 10px 5px rgba(0,0,0,0.3);
+	}
+	.first3:after {
+		border-radius: 50%;
+		box-shadow: 0 -10px 5px #fff;
+	}
+	.first4 {
+		border-radius: 4px;
+		border: 1px solid #333;
+		border-style: outset;
+		box-shadow: outset -1px -1px -2px -2px #ccc;
+	}
+	
+		</style>
+	</head>
+
+	<body>
+		<div>
+			<label> html default button style</label>
+			<button class""></button>
+		</div>
+		<div>
+			<label> default button outset</label>
+			<button style="border-style:outset;"></button>
+		</div>
+		<div>
+			<label> default button inset</label>
+			<button style="border-style:inset;"></button>
+		</div>
+		<div>
+			<label> no default border-style</label>
+			<button class="mybtn"></button>
+		</div>
+		<br >
+		<div>
+			<label> first-1 style </label>
+			<button class="mybtn first1"></button>
+		</div>
+		<br >
+		<div>
+			<label> first-2 style </label>
+			<button class="mybtn first2"></button>
+		</div>
+		<br >
+		<div>
+			<label> first-3 style </label>
+			<button class="mybtn first3"></button>
+		</div>
+		<br >
+		<div>
+			<label> first-4 style </label>
+			<button class="mybtn first4"></button>
+		</div>
+	<script>
+
+	</script>
+	</body>
+</html>

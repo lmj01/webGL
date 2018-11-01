@@ -1,0 +1,77 @@
+<!doctype html>
+<html>
+	<head>
+		<title>icon-css-style</title>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+		<style>
+.mqicon {
+	position: relative;
+	top: 1px;
+	display: inline-block;
+	font-style: normal;
+	font-weight: normal;
+	line-height: 1;
+	float: left;
+	border: 1px solid red;
+}
+/* custom icons for maiqi icons */
+[class^="mqicon-"],
+[class*=" mqicon-"] {
+    background-image: url('mqicon.png');
+    background-repeat: no-repeat;
+    display: inline-block;
+}
+.mqicon.icon-one { 
+	background-position : -220px 0px; width : 32px; height : 32px;  
+}
+.icon-one::before {
+	background-color:red;
+}
+.mqicon.icon-two::before { 
+	background-position: -240px -40px; width: 32px; height: 32px  
+} 
+.mqicon.icon-three::before { 
+	background-position: -40px -40px; width: 32px; height: 32px  
+} 
+.mqicon.icon-home::before {
+	background-position: -140px -140px;
+	width:32px;
+	height: 32px;
+	background-size: cover;
+}
+
+		</style>
+	</head>
+
+	<body>
+		<h1>test icon with some style</h1>
+		<div>
+			<button style="text-align:center;color:red;top:10px;background:transparent;border-style:none;text-align:center;">
+				<span class="mqicon icon-one"></span>mqicon-1
+			</button>
+		</div>
+		<br >
+		
+		<div>
+			<label> icon-2</label>
+			<button class="mqicon icon-two"></button>
+		</div>
+	
+		<br >
+		<div>
+			<span>
+				<i class="mqicon icon-three">icon3</i>
+			</span>
+		</div>
+		<br >
+		<div>
+			<span>
+				<i class="mqicon icon-home">home</i>
+			</span>
+		</div>
+	<script>
+
+	</script>
+	</body>
+</html>

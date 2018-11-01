@@ -1,0 +1,155 @@
+<!doctype html>
+<html>
+	<head>
+		<title>input tag</title>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+		<style>
+
+label { 
+  -webkit-appearance: push-button;
+  -moz-appearance: button; 
+  display: inline-block;
+  margin: 60px 0 10px 0;
+  cursor: pointer;
+}
+
+.disbleContent {
+  pointer-events:none;
+  opacity: 0.4;
+}
+
+.type1 {
+	/*background:black;*/
+}
+.type1 input[type=checkbox] {
+   position: absolute;
+   top: -9999px;
+   left: -9999px;
+}
+
+.type1 div {
+   /*background: green;*/
+   width: 400px;
+   height: 100px;
+   line-height: 100px;
+   /*color: white;*/
+   text-align: center;
+}
+.type1 input[type=checkbox]:checked ~ div {
+   /*background: red;	*/
+}
+
+.type2 {
+	/*background:gray;*/
+}
+.type2 input[type=radio] {
+   position: absolute;
+   top: -9999px;
+   left: -9999px;
+}
+.type2 div {
+visibility: visible;
+/*background: red;*/
+}
+.type2 input[type=radio]:checked ~ div {
+   visibility: visible;
+/*	background:blue;*/
+}
+
+		</style>
+	</head>
+
+	<body>
+		<div class="type1">
+			<label for="toggle-1">I'm a toggle</label>
+			<input type="checkbox" id="toggle-1">
+			<div id="checkContent" class="div1">
+				I'm controlled by toggle. No JavaScript!
+				<button>sss--ss</button>
+			</div>
+			<button id="checkContent2">22dsfsfdf</button>
+		</div>
+
+		<div class="type2">
+			<label for="toggle-2">I'm a toggle</label>
+			<input type="radio" name="test" id="toggle-2" onclick="clickRadio(this);" value="1">
+			
+			<div id="radioContent" class="div4">
+				<div style="display:none;"><button>btn-4</button><button>btn-5</button></div>
+				<div><button>btn-6</button><button>btn-7</button></div>
+			</div>
+			<label for="toggle-3">I'm a toggle</label>
+			<input type="radio" name="test" id="toggle-3" onclick="clickRadio(this);" value="2">
+		</div>
+<!--
+		<input type="checkbox" id="toggle-2">
+		<input type="checkbox" id="toggle-3">
+		<input type="checkbox" id="toggle-4">
+		
+		<input type="radio" name="test" id="toggle-4" >
+		<input type="radio" name="test" id="toggle-5">
+		<input type="radio" name="test" id="toggle-6">
+-->
+		<div class="type3">
+			<label for="toggle-4">I'm a toggle</label>
+			<input type="radio" name="test" id="toggle-4" value="3">
+			<div id="type31">
+				<button>btn-41</button>
+			</div>
+			<label for="toggle-5">I'm a toggle</label>
+			<input type="radio" name="test" id="toggle-5" value="4">
+			<div id="type32">
+				<button>btn-42</button>
+			</div>
+		</div>			
+	<script>
+	var ge;
+	let toggle1 = document.getElementById('toggle-1');
+	var content2 = document.getElementById('checkContent');
+	toggle1.addEventListener('change', function(e) {
+		ge = e;
+		console.log('type1--', e.target.checked);
+		if (e.target.checked) {
+			//content2.removeAttribute("disabled");
+			content2.classList.add('disableContent');
+		} else {
+			//content2.setAttribute("disabled","disabled");
+			content2.classList.remove('disableContent');
+		}	
+	}, false);
+	let currentRadio = 0;
+	function clickRadio(radio) {
+		console.log('old,new--', currentRadio, radio.value);
+		currentRadio = radio.value;	
+	}
+	var content = document.getElementById('radioContent');
+	var c31 = document.getElementById('type31');
+	var c32 = document.getElementById('type32');
+	function clickRadio2() {
+		console.log('click--', this.value);
+		if (this.value == 1) {		
+			//content.children[0].style.visibility = 'hidden';
+			//content.children[1].style.visibility = 'visible';
+			content.children[0].style.display = 'none';
+			content.children[1].style.display = 'block';
+		} else if (this.value == 2) {
+			//content.children[1].style.visibility = 'hidden';
+			//content.children[0].style.visibility = 'visible';
+			content.children[1].style.display = 'none';
+			content.children[0].style.display = 'block';
+		} else if (this.value == 3) {
+			c31.style.visibility='hidden';
+			c32.style.visibility='visible'
+		} else if (this.value == 4) {
+			c32.style.visibility='hidden';
+			c31.style.visibility='visible'
+		}
+	}
+	let radios = document.getElementsByName('test');
+	for(let i=0,c=radios.length;i<c;i++) {
+		radios[i].onclick = clickRadio2;	
+	}
+	</script>
+	</body>
+</html>
