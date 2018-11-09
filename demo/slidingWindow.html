@@ -1,0 +1,134 @@
+<!doctype html>
+<html>
+	<head>
+		<title>bump-css-style</title>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+		<style>
+.sliding-window-out {
+	height: 20px;
+	width: calc(100% - 200px);
+	bottom:0px;
+	position: relative;
+	top:100px;
+	background: gray;
+}
+.sliding-window-in {
+	position: absolute;
+	height: 20px;
+	background: green;
+	width: 100px;
+	left: 50px;
+}
+.sliding-resize-left,
+.sliding-resize-right {
+	position: absolute;
+	width: 20px;
+	height: 20px;
+	background: red;
+}
+.sliding-window-out .sliding-resize-left {
+	left:30px;
+}
+.sliding-window-out .sliding-resize-right {
+	left: 150px;
+}
+
+	
+		</style>
+	</head>
+
+	<body>
+		<div id="div_sliding_container" class="sliding-window-out">
+			
+			<div class="sliding-resize-left"></div>	
+			<div class="sliding-window-in">
+			</div>
+				
+<div class="sliding-resize-right"></div>
+		</div>
+	<script>
+// 滑动窗口
+function SlidingDragWindowControl() {
+	this.widthin;
+	this.widthout;
+	// 拖拉-drag
+	this.dom = document.getElementById('div_sliding_container');
+	this.widthout = parseInt(window.getComputedStyle(this.dom).width);
+	this.middle = this.dom.children[1];
+	this.left = this.dom.children[0];
+	this.right = this.dom.children[2];
+	this.middle.addEventListener('mousedown', (e)=>this.outmove(e), false);
+	this.left.addEventListener('mousedown', (e)=>this.inmove(e,false),false);
+	this.right.addEventListener('mousedown', (e)=>this.inmove(e,true),false);
+	let self = this;
+	window.addEventListener('mouseup', function(e) {
+		document.onmousemove = function(){};
+		self.middle.style.cursor = 'default';
+		let lleft = window.getComputedStyle(self.left).left;
+		lleft = lleft.replace('px', '');
+		self.middle.style.left = (parseInt(lleft) + 20) + 'px';
+		self.middle.style.transform = 'translate(0)';
+	})
+}
+SlidingDragWindowControl.prototype.constructor = SlidingDragWindowControl;
+SlidingDragWindowControl.prototype.outmove = function(e) {
+	this.middle.style.cursor = 'move';
+	let middleStyle = window.getComputedStyle(this.middle);
+	let left = middleStyle.left;
+	left = left.replace('px', '');
+	this.widthin = parseInt(middleStyle.width);
+	let diffx = e.clientX - left;
+	let self = this;
+	document.onmousemove = function(e) {
+		let x = e.clientX - diffx;
+		if (x < 20) x = 20;
+		if (x + self.widthin+20 > self.widthout) x = self.widthout - self.widthin-20;
+		self.middle.style.left = x + 'px';
+		self.left.style.left = (x-20) + 'px';
+		self.right.style.left = (x + self.widthin) + 'px';
+	}
+}
+SlidingDragWindowControl.prototype.inmove = function(e, isRight) {
+	let left, left2;
+	let diffx;
+	if (isRight) {
+		this.right.style.cursor = 'ew-resize';
+		left = window.getComputedStyle(this.right).left;
+	} else {
+		this.left.style.cursor = 'ew-resize';
+		left = window.getComputedStyle(this.left).left;
+		left2 = window.getComputedStyle(this.right).left;
+		left2 = parseInt(left2.replace('px', ''));
+	}
+	left = parseInt(left.replace('px', ''));
+	diffx = e.clientX - left;
+	let self = this;
+	document.onmousemove = function(e) {
+		let x = e.clientX - diffx;
+		let mstyle = window.getComputedStyle(self.middle);
+		let mwidth = mstyle.width;
+		let mleft = mstyle.left;
+		mwidth = parseInt(mwidth.replace('px', ''));
+		mleft = parseInt(mleft.replace('px', ''));
+		if (isRight) {
+			if (x < (40 + mwidth)) x = mwidth + 40;
+			if (x + 20 > self.widthout) x = self.widthout - 20;
+			self.right.style.left = x + 'px';
+			self.middle.style.width = (x - mleft) + 'px';
+		} else {
+			if (x < 0) x = 0;
+			if (x + 40 + mwidth > self.widthout) x = self.widthout - mwidth - 40;
+			let offset = x - left;
+			let newWidth = left2 - x - 20;
+			self.left.style.left = x + 'px';
+			self.middle.style.width = newWidth + 'px';
+			self.middle.style.transform = 'translate('+ (offset).toString() +'px)';
+		}
+	}
+}
+window.mqSlidingWindow = new SlidingDragWindowControl();
+
+	</script>
+	</body>
+</html>
