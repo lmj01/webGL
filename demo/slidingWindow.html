@@ -69,6 +69,8 @@ function SlidingDragWindowControl() {
 		lleft = lleft.replace('px', '');
 		self.middle.style.left = (parseInt(lleft) + 20) + 'px';
 		self.middle.style.transform = 'translate(0)';
+		self.left.style.cursor = 'default';
+		self.right.style.cursor = 'default';
 	})
 }
 SlidingDragWindowControl.prototype.constructor = SlidingDragWindowControl;
@@ -81,12 +83,15 @@ SlidingDragWindowControl.prototype.outmove = function(e) {
 	let diffx = e.clientX - left;
 	let self = this;
 	document.onmousemove = function(e) {
+		e.preventDefault();
+		e.stopPropagation();
 		let x = e.clientX - diffx;
 		if (x < 20) x = 20;
 		if (x + self.widthin+20 > self.widthout) x = self.widthout - self.widthin-20;
 		self.middle.style.left = x + 'px';
 		self.left.style.left = (x-20) + 'px';
 		self.right.style.left = (x + self.widthin) + 'px';
+		console.log('out-move--', x, self.widthin, self.widthout);
 	}
 }
 SlidingDragWindowControl.prototype.inmove = function(e, isRight) {
@@ -95,6 +100,8 @@ SlidingDragWindowControl.prototype.inmove = function(e, isRight) {
 	if (isRight) {
 		this.right.style.cursor = 'ew-resize';
 		left = window.getComputedStyle(this.right).left;
+		left2 = window.getComputedStyle(this.left).left;
+		left2 = parseInt(left2.replace('px', ''));
 	} else {
 		this.left.style.cursor = 'ew-resize';
 		left = window.getComputedStyle(this.left).left;
@@ -105,25 +112,55 @@ SlidingDragWindowControl.prototype.inmove = function(e, isRight) {
 	diffx = e.clientX - left;
 	let self = this;
 	document.onmousemove = function(e) {
+		e.preventDefault();
+		e.stopPropagation();
 		let x = e.clientX - diffx;
 		let mstyle = window.getComputedStyle(self.middle);
 		let mwidth = mstyle.width;
 		let mleft = mstyle.left;
 		mwidth = parseInt(mwidth.replace('px', ''));
+		if (mwidth <= 20) {
+			console.log('inmove--', 'current-width is ', mwidth);
+			return;
+		}
 		mleft = parseInt(mleft.replace('px', ''));
+		let x0 = x;
+		let newWidth = x;
 		if (isRight) {
-			if (x < (40 + mwidth)) x = mwidth + 40;
-			if (x + 20 > self.widthout) x = self.widthout - 20;
-			self.right.style.left = x + 'px';
-			self.middle.style.width = (x - mleft) + 'px';
+			if (x < (20 + mwidth)) {
+				x = mwidth + 20;
+			}
+			if (x + 20 > self.widthout) {
+				x = self.widthout - 20;
+				newWidth = x - mleft;
+			} else {
+				newWidth = x0 - mleft;
+			}
+			if (newWidth > 20) {
+				self.right.style.left = x + 'px';
+				self.middle.style.width = newWidth + 'px';
+			}
+			//console.log('inmove-right--', x, newWidth, mleft, x0, left2, (x0+20), self.widthout);
 		} else {
-			if (x < 0) x = 0;
-			if (x + 40 + mwidth > self.widthout) x = self.widthout - mwidth - 40;
+			let x1 = x + 40 + mwidth;
+			if (x < 0) {
+				x = 0;
+			}
+			if (x + 40 + mwidth > self.widthout) {
+				x = self.widthout - mwidth - 40;
+			}
+			if (x0 > 0 && x1 > self.widthout) {
+				newWidth = left2 - x0 - 20;
+			} else {
+				newWidth = left2 - x - 20;
+			}
 			let offset = x - left;
-			let newWidth = left2 - x - 20;
-			self.left.style.left = x + 'px';
-			self.middle.style.width = newWidth + 'px';
-			self.middle.style.transform = 'translate('+ (offset).toString() +'px)';
+			if (newWidth > 20) {
+				self.left.style.left = x + 'px';
+				self.middle.style.width = newWidth + 'px';
+				self.middle.style.transform = 'translate('+ (offset).toString() +'px)';
+			}
+			//console.log('inmove-left--',x, offset, newWidth, (e.clientX - diffx),x1,self.widthout);
 		}
 	}
 }
